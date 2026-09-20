@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pl">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <title>SWING/RES → PNG</title>
@@ -147,18 +147,18 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>SWING / Marble Master — konwerter .RES → PNG</h1>
-  <p class="sub">Eksperymentalny dekoder odtworzonego formatu grafiki gry z 1997 (Software 2000). Działa w 100% lokalnie w przeglądarce — żaden plik nigdzie nie jest wysyłany.</p>
+  <h1>SWING / Marble Master — .RES → PNG converter</h1>
+  <p class="sub">Experimental decoder for the reverse-engineered graphics format of the 1997 game (Software 2000). Runs 100% locally in the browser — no file is ever uploaded anywhere.</p>
 
   <div id="drop">
-    <p><strong>Przeciągnij plik .RES, .SWG lub .SET tutaj</strong><br>albo kliknij, aby wybrać z dysku</p>
+    <p><strong>Drag a .RES, .SWG, or .SET file here</strong><br>or click to choose one from disk</p>
     <input type="file" id="fileInput" accept=".res,.RES,.swg,.SWG,.3lb,.3LB,.6sp,.6SP,.set,.SET">
   </div>
 
   <div id="fileInfo"></div>
 
   <div id="controls">
-    <button id="downloadAllBtn" class="primary">Pobierz wszystkie klatki (ZIP)</button>
+    <button id="downloadAllBtn" class="primary">Download all frames (ZIP)</button>
     <span id="frameCount" style="color:var(--dim);font-size:12.5px;"></span>
   </div>
 
@@ -167,22 +167,23 @@
 </div>
 
 <footer>
-  <b>.RES</b> — nagłówek 16B (magic, type, w, h, dataLen, extra) + 4B paddingu. Kodek wybierany jest na podstawie pola
-  <code>type</code>: <b>1, 4 lub 6</b> — RLE parami (escape + licznik pikseli do pominięcia); <b>2</b> — prosty strumień
-  1 token = 1 piksel; <b>7</b> — obserwowany w obu wariantach, więc próbowany jest najpierw kodek parami (z walidacją),
-  a w razie niepowodzenia prosty strumień; inne wartości (np. 3) domyślnie jako strumień prosty. Token ucieczki to
-  <code>0x0003</code> lub (rzadziej) <code>0x0000</code> — próbowane per klatka z walidacją, nigdy oba naraz (część
-  obrazów zawiera legalne czarne piksele o wartości słowa 0, które inaczej zostałyby błędnie potraktowane jako ucieczka).
-  <b>.SWG</b> — surowa, nieskompresowana bitmapa pełnoekranowa 640×480 bez nagłówka (ekrany menu/tła). Kolory w obu
-  formatach to RGB555. Obsługiwane są kontenery <code>.RES</code> z wieloma sklejonymi klatkami.
-  <b>Archiwa</b> (np. EXTRAS.RES, HELPMODE.RES) — pliki, których nagłówek nie pasuje do pojedynczego obrazu, są
-  automatycznie sprawdzane pod kątem formatu paczki: <code>u32</code> liczba wpisów + tabela rekordów (12-bajtowa
-  nazwa + rozmiar + offset) + sklejone dane. Każdy nazwany wpis (najczęściej <code>.3LB</code>/<code>.6SP</code>)
-  jest dekodowany jak zwykły plik <code>.RES</code>; wpisy innego typu (np. <code>.DAT</code>) są wykrywane, ale
-  pomijane, bo nie są obrazami.
-  <b>.SET</b> — zestaw skórek kulek (np. NORMAL.SET): 48-bajtowy nagłówek z sygnaturą tekstową "Gib mir 'ne
-  Kugel" i nazwą zestawu, po którym następuje zwykły blok obrazów <code>.RES</code> (same kulki, jedna klatka na
-  kolor/wzór).
+  <b>.RES</b> — 16B header (magic, type, w, h, dataLen, extra) + 4B padding. The codec is chosen based on the
+  <code>type</code> field: <b>1, 4, or 6</b> — paired RLE (escape + counter of pixels to skip); <b>2</b> — simple
+  stream, 1 token = 1 pixel; <b>7</b> — observed in both variants, so the paired codec is tried first (with
+  validation), falling back to the simple stream on failure; other values (e.g. 3) default to the simple stream.
+  The escape token is <code>0x0003</code> or (less often) <code>0x0000</code> — tried per frame with validation,
+  never both at once (some images contain legitimate black pixels with word value 0, which would otherwise be
+  wrongly treated as an escape).
+  <b>.SWG</b> — a raw, uncompressed 640×480 full-screen bitmap with no header (menu/background screens). Colors in
+  both formats are RGB555. Multi-frame <code>.RES</code> containers with several concatenated frames are supported.
+  <b>Archives</b> (e.g. EXTRAS.RES, HELPMODE.RES) — files whose header doesn't match a single image are
+  automatically checked against the package format: <code>u32</code> entry count + record table (12-byte name +
+  size + offset) + concatenated data. Each named entry (usually <code>.3LB</code>/<code>.6SP</code>) is decoded
+  like a plain <code>.RES</code> file; entries of other types (e.g. <code>.DAT</code>) are detected but skipped,
+  since they aren't images.
+  <b>.SET</b> — a marble skin set (e.g. NORMAL.SET): a 48-byte header with the text signature "Gib mir 'ne
+  Kugel" and the set's name, followed by a plain <code>.RES</code> image block (the marbles themselves, one frame
+  per color/pattern).
 </footer>
 
 <script>
@@ -458,14 +459,14 @@ async function handleFile(file){
   decodedFrames = [];
   controlsEl.style.display = 'none';
   statusEl.className = '';
-  statusEl.textContent = 'Wczytywanie...';
+  statusEl.textContent = 'Loading...';
 
   const buf = await file.arrayBuffer();
   const bytes = new Uint8Array(buf);
   const view = new DataView(buf);
 
   fileInfo.style.display = 'block';
-  fileInfo.innerHTML = `Plik: <code>${file.name}</code> — ${bytes.length.toLocaleString('pl-PL')} bajtów`;
+  fileInfo.innerHTML = `File: <code>${file.name}</code> — ${bytes.length.toLocaleString('en-US')} bytes`;
 
   const isSWG = /\.swg$/i.test(file.name);
 
@@ -473,12 +474,12 @@ async function handleFile(file){
     const res = decodeSWG(bytes, view);
     if (!res){
       statusEl.className = 'err';
-      statusEl.textContent = `Plik .SWG ma nieoczekiwany rozmiar (${bytes.length} B). Znane pliki .SWG to surowe bitmapy 640×480 RGB555 (614400 B) bez nagłówka — ten plik może mieć inną rozdzielczość.`;
+      statusEl.textContent = `The .SWG file has an unexpected size (${bytes.length} B). Known .SWG files are raw 640×480 RGB555 bitmaps (614400 B) with no header — this file may have a different resolution.`;
       return;
     }
     decodedFrames = [{...res, index: 0}];
-    statusEl.textContent = `Zdekodowano surowy ekran 640×480 (.SWG, bez nagłówka i kompresji).`;
-    frameCountEl.textContent = `1 obraz (pełny ekran)`;
+    statusEl.textContent = `Decoded a raw 640×480 screen (.SWG, no header or compression).`;
+    frameCountEl.textContent = `1 image (full screen)`;
     controlsEl.style.display = 'flex';
     renderFrameGrid(file.name);
     downloadAllBtn.onclick = () => downloadAllAsZip(file.name);
@@ -499,9 +500,9 @@ async function handleFile(file){
 
   if (count > 0 && setHeader){
     const leftover = bytes.length - offset;
-    statusEl.textContent = `Zestaw kulek "${setHeader.name}": ${count} kulek zdekodowanych.` +
-      (leftover > 16 ? ` (${leftover} B na końcu pliku to inna, jeszcze nierozpoznana struktura - pominięto.)` : '');
-    frameCountEl.textContent = `${count} kulek`;
+    statusEl.textContent = `Marble set "${setHeader.name}": ${count} marbles decoded.` +
+      (leftover > 16 ? ` (${leftover} B at the end of the file is a different, still-unrecognized structure - skipped.)` : '');
+    frameCountEl.textContent = `${count} marbles`;
     controlsEl.style.display = 'flex';
     renderFrameGrid(file.name);
     downloadAllBtn.onclick = () => downloadAllAsZip(file.name);
@@ -530,9 +531,9 @@ async function handleFile(file){
         }
         if (entryFrameCount > 0) imageEntryCount++; else otherEntryCount++;
       }
-      statusEl.textContent = `Archiwum: ${entries.length} plików w środku, ${imageEntryCount} to obrazy (łącznie ${decodedFrames.length} klatek)` +
-        (otherEntryCount > 0 ? `, ${otherEntryCount} to dane innego typu (nie obrazy, pominięte).` : '.');
-      frameCountEl.textContent = `${decodedFrames.length} klatek z ${imageEntryCount} plików`;
+      statusEl.textContent = `Archive: ${entries.length} files inside, ${imageEntryCount} are images (${decodedFrames.length} frames total)` +
+        (otherEntryCount > 0 ? `, ${otherEntryCount} are data of another type (not images, skipped).` : '.');
+      frameCountEl.textContent = `${decodedFrames.length} frames from ${imageEntryCount} files`;
       controlsEl.style.display = 'flex';
       renderFrameGrid(file.name);
       downloadAllBtn.onclick = () => downloadAllAsZip(file.name);
@@ -540,18 +541,18 @@ async function handleFile(file){
     }
 
     statusEl.className = 'err';
-    statusEl.textContent = 'Nie udało się rozpoznać nagłówka (magic 0x14 / const 0x0F) ani formatu archiwum. Ten plik może być innego typu, którego jeszcze nie obsługujemy.';
+    statusEl.textContent = 'Could not recognize the header (magic 0x14 / const 0x0F) or the archive format. This file may be of a type we don\'t support yet.';
     return;
   }
 
   const leftover = bytes.length - offset;
   statusEl.className = leftover > 16 ? 'err' : '';
-  statusEl.textContent = `Zdekodowano ${count} klatek. ` +
+  statusEl.textContent = `Decoded ${count} frames. ` +
     (leftover > 16
-      ? `Uwaga: zostało ${leftover} nierozpoznanych bajtów na końcu pliku.`
-      : `Cały plik zużyty (pozostało ${leftover} bajtów paddingu/końca).`);
+      ? `Note: ${leftover} unrecognized bytes remain at the end of the file.`
+      : `Entire file consumed (${leftover} bytes of padding/end remaining).`);
 
-  frameCountEl.textContent = `${count} klatek`;
+  frameCountEl.textContent = `${count} frames`;
   controlsEl.style.display = 'flex';
   renderFrameGrid(file.name);
   downloadAllBtn.onclick = () => downloadAllAsZip(file.name);
@@ -570,7 +571,7 @@ function renderFrameGrid(fileName){
       : `#${f.index} · ${f.w}×${f.h}`;
     div.appendChild(meta);
     const link = document.createElement('a');
-    link.textContent = 'Pobierz PNG';
+    link.textContent = 'Download PNG';
     link.href = '#';
     link.addEventListener('click', e => {
       e.preventDefault();
@@ -607,7 +608,7 @@ function crc32(bytes){
 }
 
 async function downloadAllAsZip(baseName){
-  statusEl.textContent = 'Pakowanie ZIP...';
+  statusEl.textContent = 'Packing ZIP...';
   const name = baseName.replace(/\.[^.]+$/,'');
   const files = [];
   for (const f of decodedFrames){
@@ -690,7 +691,7 @@ async function downloadAllAsZip(baseName){
   a.href = URL.createObjectURL(blob);
   a.download = `${name}_frames.zip`;
   a.click();
-  statusEl.textContent = `Zdekodowano ${decodedFrames.length} klatek. ZIP pobrany.`;
+  statusEl.textContent = `Decoded ${decodedFrames.length} frames. ZIP downloaded.`;
 }
 </script>
 </body>

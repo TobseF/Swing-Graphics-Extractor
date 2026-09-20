@@ -1,9 +1,9 @@
-# Format `.RES` — Swing / Marble Master (Software 2000, 1997, MS-DOS)
+# `.RES` Format — Swing / Marble Master (Software 2000, 1997, MS-DOS)
 
-Dokumentacja techniczna formatu grafiki gry, odtworzonego metodą inżynierii wstecznej.
-**Ten dokument jest aktualizowany na bieżąco w miarę odkrywania nowych informacji.**
+Technical documentation of the game's graphics format, reconstructed by reverse engineering.
+**This document is updated continuously as new information is discovered.**
 
-Ostatnia aktualizacja: analiza plików `CD.RES`, `FUNKEN1.RES`, `FUNKEN2.RES`, `FONTS.RES`,
+Last update: analysis of the files `CD.RES`, `FUNKEN1.RES`, `FUNKEN2.RES`, `FONTS.RES`,
 `CORAIN.RES`, `PAUSE.RES`, `BUTTON.RES`, `KRANNORM.RES`, `COLOR.RES`, `BLOCK.RES`,
 `BLOCKR.RES`, `BLOCKL.RES`, `GAMMA.RES`, `GAMMA.SWG`, `KEXPLO.RES`, `SMLMENU.RES`,
 `SMRM1.RES`, `SMRM2.RES`, `EXTRAS.RES`, `HELPMODE.RES`, `NORMAL.SET`, `MAKE.SET`,
@@ -11,107 +11,107 @@ Ostatnia aktualizacja: analiza plików `CD.RES`, `FUNKEN1.RES`, `FUNKEN2.RES`, `
 
 ---
 
-## 1. Status ogólny
+## 1. Overall status
 
 | Element | Status |
 |---|---|
-| Nagłówek pojedynczego obrazu (16 B) | ✅ Rozpracowany |
-| Padding po nagłówku (4 B) | ✅ Potwierdzony (wszystkie znane odmiany kodeka) |
-| Format koloru pikseli | ✅ RGB555 |
-| Kodek `type=4`/`type=1`/`type=6` (RLE parami) | ✅ Rozpracowany, potwierdzony wizualnie (CD.RES, PAUSE.RES, KRANNORM.RES, BLOCK.RES, SMLMENU.RES, SMRM1.RES, SMRM2.RES) |
-| Kodek `type=2`/`type=7`/`type=3` (prosty strumień) | ✅ Rozpracowany, potwierdzony wizualnie (BUTTON.RES, FUNKEN2.RES, GAMMA.RES) |
-| Token ucieczki | ✅ `0x0003` (najczęstszy) lub `0x0000` (rzadziej, np. COLOR.RES) — **wybierany per klatka próbą+walidacją, NIGDY oba naraz** (patrz §4.3 i §4.5, ważne poprawki!) |
-| Wybór kodeka na podstawie `type` | ⚠️ `type=7` obserwowany w OBU kodekach (COLOR.RES=parami, FUNKEN2/CORAIN/GAMMA=prosty) — wymaga próby+walidacji, nie prostego mapowania (patrz §4.4) |
-| Wykrywanie granic klatek w kontenerze wieloklatkowym | ✅ Działa niezawodnie na wszystkich 11 przebadanych plikach (0 B resztek) |
-| Znaczenie pola `type` (poza wyborem kodeka) | ❓ Nieznane — potwierdzone dotąd: `{1,4,6}`→RLE parami zawsze, `{2}`→prosty zawsze, `{7}`→oba warianty, `{3}`→prosty (GAMMA.RES) |
-| Znaczenie pola `extra` (ostatnie 4 B nagłówka) | ❓ Nieznane — NIE jest tokenem ucieczki (hipoteza obalona, patrz §4.3) |
-| Znaczenie 4 bajtów paddingu | ❓ Nieznane (zawsze pomijane, wartość zwykle 0, ale nie zawsze) |
-| `FONTS.RES` | ❌ Nie pasuje do modelu nagłówka ANI do formatu archiwum — jedyny nierozwiązany plik (patrz §6.2) |
-| `CORAIN.RES` | ✅ **Rozwiązane!** Wynik to czysta animacja rozbłysku/eksplozji (patrz §4.3) |
-| Format `.SWG` (osobny od `.RES`) | ✅ Rozpracowany — surowa bitmapa pełnoekranowa, patrz §9 |
-| Format archiwum (`EXTRAS.RES`, `HELPMODE.RES`) | ✅ Rozpracowany w 100% — pliki-paczki z nazwanymi podplikami, patrz §10 |
-| Format `.SET` (zestawy skórek kulek) | ✅ Rozpracowany — nagłówek 48 B + blok obrazów `.RES`, patrz §11 |
+| Single-image header (16 B) | ✅ Worked out |
+| Padding after the header (4 B) | ✅ Confirmed (all known codec variants) |
+| Pixel color format | ✅ RGB555 |
+| Codec `type=4`/`type=1`/`type=6` (paired RLE) | ✅ Worked out, visually confirmed (CD.RES, PAUSE.RES, KRANNORM.RES, BLOCK.RES, SMLMENU.RES, SMRM1.RES, SMRM2.RES) |
+| Codec `type=2`/`type=7`/`type=3` (simple stream) | ✅ Worked out, visually confirmed (BUTTON.RES, FUNKEN2.RES, GAMMA.RES) |
+| Escape token | ✅ `0x0003` (most common) or `0x0000` (rarer, e.g. COLOR.RES) — **chosen per frame by trial + validation, NEVER both at once** (see §4.3 and §4.5, important corrections!) |
+| Codec selection based on `type` | ⚠️ `type=7` observed in BOTH codecs (COLOR.RES = paired, FUNKEN2/CORAIN/GAMMA = simple) — requires trial + validation, not a simple mapping (see §4.4) |
+| Frame-boundary detection in a multi-frame container | ✅ Works reliably on all 11 examined files (0 B leftover) |
+| Meaning of the `type` field (beyond codec selection) | ❓ Unknown — confirmed so far: `{1,4,6}` → paired RLE always, `{2}` → simple always, `{7}` → both variants, `{3}` → simple (GAMMA.RES) |
+| Meaning of the `extra` field (last 4 B of the header) | ❓ Unknown — it is NOT the escape token (hypothesis disproved, see §4.3) |
+| Meaning of the 4-byte padding | ❓ Unknown (always skipped, value usually 0, but not always) |
+| `FONTS.RES` | ❌ Does not match the header model OR the archive format — the only unresolved file (see §6.2) |
+| `CORAIN.RES` | ✅ **Solved!** The result is a clean flash/explosion animation (see §4.3) |
+| `.SWG` format (separate from `.RES`) | ✅ Worked out — raw full-screen bitmap, see §9 |
+| Archive format (`EXTRAS.RES`, `HELPMODE.RES`) | ✅ 100% worked out — package files with named sub-files, see §10 |
+| `.SET` format (marble skin sets) | ✅ Worked out — 48 B header + `.RES` image block, see §11 |
 
 ---
 
-## 2. Struktura nagłówka (16 bajtów)
+## 2. Header structure (16 bytes)
 
-Little-endian, na początku każdego obrazu/klatki:
+Little-endian, at the start of every image/frame:
 
 ```
-offset  rozmiar  pole          opis
-0x00    u16      magic         zawsze 0x0014
-0x02    u8       type          selektor kodeka danych pikseli (patrz §4)
-0x03    u8       const_0f      zawsze 0x0F
-0x04    u16      width         szerokość obrazu w pikselach
-0x06    u16      height        wysokość obrazu w pikselach
-0x08    u32      dataLen       znaczenie zależne od kodeka (patrz §4)
-0x0C    u32      extra         nieznane — obserwowane wartości: 0, 3
+offset  size     field         description
+0x00    u16      magic         always 0x0014
+0x02    u8       type          data codec selector for pixels (see §4)
+0x03    u8       const_0f      always 0x0F
+0x04    u16      width         image width in pixels
+0x06    u16      height        image height in pixels
+0x08    u32      dataLen       meaning depends on the codec (see §4)
+0x0C    u32      extra         unknown — observed values: 0, 3
 ```
 
-Po 16-bajtowym nagłówku następują **4 bajty paddingu** (w większości obserwacji same zera),
-a dopiero po nich właściwy strumień danych pikseli.
+After the 16-byte header come **4 bytes of padding** (zero in most observations),
+and only after that the actual pixel data stream.
 
-Struct Python do parsowania nagłówka:
+Python struct for parsing the header:
 ```python
 magic, typ, const_0f, w, h, datalen, extra = struct.unpack_from('<HBBHHII', data, offset)
 ```
 
 ---
 
-## 3. Format koloru pikseli — RGB555
+## 3. Pixel color format — RGB555
 
-Każdy "literalny" piksel to 16-bitowe słowo (little-endian):
+Each "literal" pixel is a 16-bit word (little-endian):
 
 ```
 bit:  15 14 13 12 11 10 09 08 07 06 05 04 03 02 01 00
       x  R  R  R  R  R  G  G  G  G  G  B  B  B  B  B
 ```
 
-- najwyższy bit (15) nieużywany / niezidentyfikowany
-- R: bity 10–14 (5 bitów)
-- G: bity 5–9 (5 bitów)
-- B: bity 0–4 (5 bitów)
+- highest bit (15): unused / not identified
+- R: bits 10–14 (5 bits)
+- G: bits 5–9 (5 bits)
+- B: bits 0–4 (5 bits)
 
-Konwersja do 8-bit/kanał: `wartość_8bit = wartość_5bit * 255 / 31`.
+Conversion to 8-bit/channel: `value_8bit = value_5bit * 255 / 31`.
 
-**Ważne:** przetestowano też RGB565, BGR565, BGR555 — tylko RGB555 dało realistyczne,
-czytelne obrazy (potwierdzone wizualnie na `PAUSE.RES`, gdzie widoczny jest czerwony
-spadochron i czytelny napis "Pause").
+**Important:** RGB565, BGR565, and BGR555 were also tested — only RGB555 gave
+realistic, readable images (visually confirmed on `PAUSE.RES`, which clearly shows
+a red parachute and a readable "Pause" caption).
 
 ---
 
-## 4. Dwa znane kodeki danych pikseli
+## 4. Two known pixel-data codecs
 
-Wybór kodeka zależy od pola `type` w nagłówku. Potwierdzone dotąd przyporządkowanie:
+The codec choice depends on the `type` field in the header. Confirmed mappings so far:
 
-| `type` | Plik(i) źródłowe | Kodek |
+| `type` | Source file(s) | Codec |
 |---|---|---|
-| 1 | `KRANNORM.RES` | RLE parami (opisany w §4.1) |
-| 4 | `CD.RES`, `PAUSE.RES` | RLE parami (opisany w §4.1) |
-| 2 | `BUTTON.RES` | Prosty strumień (opisany w §4.2) |
-| 7 | `FUNKEN1.RES`(wstępnie), `FUNKEN2.RES` | Prosty strumień (opisany w §4.2) |
+| 1 | `KRANNORM.RES` | Paired RLE (described in §4.1) |
+| 4 | `CD.RES`, `PAUSE.RES` | Paired RLE (described in §4.1) |
+| 2 | `BUTTON.RES` | Simple stream (described in §4.2) |
+| 7 | `FUNKEN1.RES` (tentatively), `FUNKEN2.RES` | Simple stream (described in §4.2) |
 
-**Hipoteza robocza:** wartości `type` nie mapują się 1:1 ani parzyste/nieparzyste na
-kodek — dotąd zaobserwowano, że `{1, 4}` używają RLE parami, a `{2, 7}` prostego
-strumienia. To **lista znanych przyporządkowań**, nie ogólna reguła — nie wiadomo,
-jak zachowają się inne, jeszcze niesprawdzone wartości `type`. Konwerter na razie
-traktuje `type∈{1,4}` jako RLE parami, a każdą inną wartość jako kodek prosty
-(domyślny fallback).
+**Working hypothesis:** `type` values don't map 1:1 to a codec, nor by even/odd —
+so far it has been observed that `{1, 4}` use paired RLE, and `{2, 7}` use the
+simple stream. This is a **list of known mappings**, not a general rule — it's
+unknown how other, still-untested `type` values would behave. The converter
+currently treats `type∈{1,4}` as paired RLE, and any other value as the simple
+codec (the default fallback).
 
-### 4.1 Kodek `type=4` — RLE parami
+### 4.1 Codec `type=4` — paired RLE
 
-Dane to sekwencja 16-bitowych słów, o łącznej długości **dokładnie `dataLen` słów**.
-Dekodowanie odbywa się **wiersz po wierszu** (bieg escape+count nie przekracza szerokości
-`width`, ale pojedynczy piksel/bieg może kończyć się dokładnie na granicy wiersza):
+The data is a sequence of 16-bit words, with a total length of **exactly `dataLen`
+words**. Decoding happens **row by row** (an escape+count run never crosses the
+`width` boundary, but a single pixel/run can end exactly at the row boundary):
 
-- token `0x0003` = **escape**: następne słowo to `count` — liczba kolejnych pikseli
-  **przezroczystych** do pominięcia
-- każdy inny token = **jeden piksel literalny** w formacie RGB555
+- token `0x0003` = **escape**: the next word is `count` — the number of
+  consecutive **transparent** pixels to skip
+- any other token = **one literal pixel** in RGB555 format
 
-**Aktualizacja:** token ucieczki może być też `0x0000`, nie tylko `0x0003` — patrz §4.3.
+**Update:** the escape token can also be `0x0000`, not only `0x0003` — see §4.3.
 
-Pseudokod:
+Pseudocode:
 ```python
 idx = 0
 for row in range(height):
@@ -120,418 +120,410 @@ for row in range(height):
         token = words[idx]; idx += 1
         if token == 3:
             cnt = words[idx]; idx += 1
-            col += cnt   # przezroczyste, pomiń
+            col += cnt   # transparent, skip
         else:
-            piksel[col, row] = rgb555_to_rgb888(token)
+            pixel[col, row] = rgb555_to_rgb888(token)
             col += 1
 ```
 
-**Walidacja:** dla `CD.RES` i `PAUSE.RES` liczba zużytych słów odpowiada dokładnie
-`dataLen`, a przy `PAUSE.RES` (kontener 64 sklejonych klatek) suma wszystkich rekordów
-zużywa plik **co do ostatniego bajtu** (815278/815278 B). Analogicznie potwierdzone
-dla `KRANNORM.RES` (`type=1`, kontener **190 klatek**, animacja żurawia/haka z
-migającym światełkiem) — plik zużyty w 100% (1420786/1420786 B), zero bajtów resztek.
+**Validation:** for `CD.RES` and `PAUSE.RES` the number of words consumed matches
+`dataLen` exactly, and for `PAUSE.RES` (a container of 64 concatenated frames) the
+sum of all records consumes the file **down to the last byte** (815278/815278 B).
+Likewise confirmed for `KRANNORM.RES` (`type=1`, a container of **190 frames**, a
+crane/hook animation with a blinking light) — file consumed 100% (1420786/1420786 B),
+zero leftover bytes.
 
-### 4.2 Kodek `type=2` / `type=7` — prosty strumień 1 token = 1 piksel
+### 4.2 Codec `type=2` / `type=7` — simple stream, 1 token = 1 pixel
 
-Dane to sekwencja 16-bitowych słów, czytana **w sposób ciągły** (bez wyrównania do
-wierszy — pojedynczy piksel/przebieg może "przechodzić" przez koniec wiersza do
-następnego), aż do zapełnienia `width * height` pikseli:
+The data is a sequence of 16-bit words, read **continuously** (without row
+alignment — a single pixel/run can "cross" the end of a row into the next one)
+until `width * height` pixels are filled:
 
-- token `0x0003` = **jeden piksel przezroczysty** (bez żadnego licznika po nim!)
-- każdy inny token = **jeden piksel literalny** RGB555
+- token `0x0003` = **one transparent pixel** (with no counter following it!)
+- any other token = **one literal pixel** in RGB555
 
-**Aktualizacja:** token ucieczki może być też `0x0000` — patrz §4.3.
+**Update:** the escape token can also be `0x0000` — see §4.3.
 
-Pseudokod:
+Pseudocode:
 ```python
 filled = 0
 idx = 0
 while filled < width*height:
     token = words[idx]; idx += 1
     if token == 3:
-        filled += 1   # przezroczysty piksel
+        filled += 1   # transparent pixel
     else:
         row, col = divmod(filled, width)
-        piksel[col, row] = rgb555_to_rgb888(token)
+        pixel[col, row] = rgb555_to_rgb888(token)
         filled += 1
 ```
 
-**Ważna różnica względem `type=4`:** tu NIE MA licznika po escape — to była pierwotna
-przyczyna zniekształceń przy próbie dekodowania `BUTTON.RES` algorytmem z `type=4`
-(licznik z kolejnego słowa był błędnie "zjadany" jako liczba pikseli do pominięcia,
-co przesuwało resztę strumienia).
+**Important difference from `type=4`:** here there is NO counter after the escape —
+this was the original cause of the corruption seen when trying to decode
+`BUTTON.RES` with the `type=4` algorithm (the counter from the next word was
+incorrectly "eaten" as a number of pixels to skip, shifting the rest of the stream).
 
-**Walidacja:** dla `BUTTON.RES` liczba zużytych słów = `width*height` dokładnie
-(oraz zgadza się z polem `dataLen`, które dla tego kodeka wygląda na **równe
-`width*height`** — czyli redundantne, a nie faktyczną długością strumienia). Dla
-`FUNKEN2.RES` (`8×8`) też zgadza się liczbowo, choć plik zawiera dodatkowe dane po
-tej klatce (patrz §6, niepewność co do dalszej zawartości).
+**Validation:** for `BUTTON.RES` the number of words consumed equals `width*height`
+exactly (and matches the `dataLen` field, which for this codec appears to be
+**equal to `width*height`** — i.e. redundant, not the actual stream length). For
+`FUNKEN2.RES` (`8×8`) the count also matches, although the file contains extra
+data after this frame (see §6, uncertainty about the rest of the content).
 
-**Uwaga:** dla kodeka `type=2`/`7`, pole `dataLen` NIE jest wiarygodnym wskaźnikiem
-końca strumienia — koniec wyznacza wypełnienie `width*height` pikseli, nie wartość
-`dataLen`. To odróżnia go od `type=4`, gdzie `dataLen` jest autorytatywne.
+**Note:** for the `type=2`/`7` codec, the `dataLen` field is NOT a reliable
+indicator of the stream's end — the end is determined by filling `width*height`
+pixels, not by the `dataLen` value. This distinguishes it from `type=4`, where
+`dataLen` is authoritative.
 
-### 4.3 Token ucieczki: `0x0003` lub `0x0000` — WYBIERANY PER KLATKA, NIGDY OBA NARAZ
+### 4.3 Escape token: `0x0003` or `0x0000` — CHOSEN PER FRAME, NEVER BOTH AT ONCE
 
-**Historia tej sekcji jest ważna, bo pierwsze rozwiązanie okazało się błędne.**
+**The history of this section matters, because the first fix turned out to be wrong.**
 
-Przy analizie `COLOR.RES` (30×30 kolorowe kulki, kontener 46 klatek) odkryto, że ten
-plik koduje przezroczystość tokenem **`0x0000`**, nie `0x0003` jak wszystkie
-wcześniej zbadane pliki.
+While analyzing `COLOR.RES` (30×30 colored marbles, a 46-frame container), it was
+discovered that this file encodes transparency with the token **`0x0000`**, not
+`0x0003` like every previously examined file.
 
-**Pierwsza (błędna) próba naprawy:** kazać obu kodekom traktować **jednocześnie**
-`0x0000` i `0x0003` jako token ucieczki. To poprawiło `COLOR.RES`, `BUTTON.RES`
-(ujawniając 7 zamiast 2 klatek) i `FUNKEN2.RES` (10 zamiast 1 klatki) — ale
-**spowodowało regresję**: `KRANNORM.RES` (wcześniej perfekcyjny) zaczął się
-"łamać" na części klatek, a `BLOCK.RES`/`BLOCKR.RES` dostały dziury/przesunięcia.
+**First (incorrect) fix attempt:** make both codecs treat **both** `0x0000` and
+`0x0003` as the escape token simultaneously. This fixed `COLOR.RES`, `BUTTON.RES`
+(revealing 7 frames instead of 2), and `FUNKEN2.RES` (10 frames instead of 1) — but
+**caused a regression**: `KRANNORM.RES` (previously perfect) started "breaking" on
+some frames, and `BLOCK.RES`/`BLOCKR.RES` got holes/shifts.
 
-**Przyczyna:** niektóre obrazy (np. `KRANNORM.RES`, `BLOCK.RES`) legalnie zawierają
-**literalny piksel o wartości słowa `0`** (czysta czerń w RGB555). Diagnostyka na
-`KRANNORM.RES` wykazała **dokładną korelację 1:1**: klatki, które się "łamały"
-(zakresy 0–36 i 88–189), to dokładnie te zawierające token `0` w strumieniu danych
-jako prawdziwy piksel; klatki bez takiego tokenu (37–87) wypadały poprawnie czystym
-zbiegiem okoliczności. Traktowanie `0` jako escape bezwarunkowo "zjadało" te
-legalne czarne piksele razem z (nieistniejącym) licznikiem po nich, rozjeżdżając
-resztę obrazu.
+**Cause:** some images (e.g. `KRANNORM.RES`, `BLOCK.RES`) legitimately contain a
+**literal pixel with word value `0`** (pure black in RGB555). Diagnostics on
+`KRANNORM.RES` showed an exact 1:1 correlation: the frames that "broke" (ranges
+0–36 and 88–189) were exactly those containing the token `0` in the data stream as
+a genuine pixel; frames without that token (37–87) came out correctly by pure
+coincidence. Treating `0` as an escape unconditionally "ate" those legitimate
+black pixels together with the (nonexistent) counter after them, throwing off the
+rest of the image.
 
-**Poprawne rozwiązanie:** dla każdej klatki osobno próbować **jednego** tokenu na
-raz, zaczynając od `0x0003`, z walidacją wyniku:
-- w kodeku RLE parami: poprawność = cały budżet słów (`dataLen`) został zużyty
-  ORAZ każdy wiersz (poza ewentualnie ostatnim — końcowe przezroczyste wiersze
-  bywają po prostu nieobecne w danych, bez jawnego kodowania) wypełnił się
-  dokładnie do szerokości `width`
-- w kodeku prostym: poprawność = udało się wypełnić dokładnie `width*height`
-  pikseli bez przedwczesnego wyczerpania danych
+**Correct solution:** for each frame separately, try **one** token at a time,
+starting with `0x0003`, and validate the result:
+- for the paired-RLE codec: valid = the entire word budget (`dataLen`) was
+  consumed AND every row (except possibly the last — trailing transparent rows
+  can simply be absent from the data, without explicit encoding) was filled
+  exactly to `width`
+- for the simple codec: valid = exactly `width*height` pixels were filled
+  without running out of data prematurely
 
-Jeśli próba z `0x0003` się nie powiedzie walidacji, dopiero wtedy próbowany jest
-`0x0000` dla TEJ SAMEJ klatki. Dzięki temu:
-- `KRANNORM.RES` — z powrotem 190/190 klatek bezbłędnie (escape=3 waliduje się
-  poprawnie dla każdej klatki, `0x0000` nigdy nie jest nawet próbowany)
-- `BLOCK.RES` (2 klatki), `BLOCKR.RES` (8 klatek), `BLOCKL.RES` (8 klatek) — wszystkie
-  bez dziur/przesunięć
-- `COLOR.RES`, `BUTTON.RES` (7 klatek), `FUNKEN2.RES` (10 klatek) — nadal poprawne,
-  bo próba z `0x0003` nie waliduje się dla ich klatek z `escape=0`, więc dekoder
-  poprawnie przechodzi na `0x0000`
-- **`CORAIN.RES` — nieoczekiwanie również się naprawił!** Wcześniej "zaszumiony"
-  wynik (ukośne paski) okazał się artefaktem błędnego tokenu ucieczki. Poprawny
-  rezultat to czysta, 33-klatkowa animacja jasnego rozbłysku/eksplozji stopniowo
-  rozpadającego się na pojedyncze cząsteczki — wcześniej oznaczony jako otwarty,
-  nierozwiązany problem (§6.3 w poprzednich wersjach dokumentu), teraz zamknięty
+If the `0x0003` attempt fails validation, only then is `0x0000` tried for THAT
+SAME frame. As a result:
+- `KRANNORM.RES` — back to 190/190 frames flawlessly (escape=3 validates
+  correctly for every frame, `0x0000` is never even tried)
+- `BLOCK.RES` (2 frames), `BLOCKR.RES` (8 frames), `BLOCKL.RES` (8 frames) — all
+  without holes/shifts
+- `COLOR.RES`, `BUTTON.RES` (7 frames), `FUNKEN2.RES` (10 frames) — still correct,
+  because the `0x0003` attempt doesn't validate for their `escape=0` frames, so
+  the decoder correctly falls through to `0x0000`
+- **`CORAIN.RES` — unexpectedly fixed as well!** The previously "noisy" result
+  (diagonal stripes) turned out to be an artifact of the wrong escape token. The
+  correct result is a clean, 33-frame animation of a bright flash/explosion
+  gradually breaking apart into individual particles — previously marked as an
+  open, unresolved issue (§6.3 in earlier versions of this document), now closed
 
-**Odrzucona hipoteza pośrednia:** testowano też, czy `escape = wartość pola extra
-z nagłówka`. Dawało to poprawny wynik dla `COLOR.RES` (extra=0, escape=0) czysto
-przez zbieg okoliczności, ale **łamało `FUNKEN2.RES`** (extra=0, ale prawdziwy
-escape to 3 dla tamtej klatki) — hipoteza obalona i porzucona.
+**Rejected intermediate hypothesis:** it was also tested whether `escape = the
+value of the header's extra field`. This gave the correct result for `COLOR.RES`
+(extra=0, escape=0) purely by coincidence, but **broke `FUNKEN2.RES`** (extra=0,
+but the real escape for that frame is 3) — hypothesis disproved and dropped.
 
-### 4.5 Walidacja próby tokenu ucieczki musi odrzucać niedorzeczne liczniki
+### 4.5 Escape-token trial validation must reject implausible counters
 
-Na małych obrazkach (np. `KEXPLO.RES`, 14×15 px) zdarza się, że **obie** próby
-(`escape=3` i `escape=0`) formalnie przechodzą walidację z §4.3 (cały `dataLen`
-zużyty, wiersze wypełnione do szerokości) — ale tylko jedna z nich daje sensowny
-obraz. Odkryto to na pierwszej klatce animacji eksplozji `KEXPLO.RES`: przy
-`escape=3` obraz wychodził jako szum (szachownica ukośnych pasów), mimo że
-walidacja formalnie "przechodziła".
+On small images (e.g. `KEXPLO.RES`, 14×15 px), it sometimes happens that **both**
+attempts (`escape=3` and `escape=0`) formally pass the §4.3 validation (the whole
+`dataLen` consumed, rows filled to width) — but only one of them produces a
+sensible image. This was discovered on the first frame of the `KEXPLO.RES`
+explosion animation: with `escape=3` the image came out as noise (a checkerboard
+of diagonal stripes), even though validation formally "passed".
 
-**Przyczyna:** przy błędnym tokenie ucieczki, algorytm czasem "trafia" na
-liczbę słów pasującą do szerokości wiersza czystym zbiegiem okoliczności —
-zwłaszcza przy małych obrazkach, gdzie przestrzeń możliwości jest ograniczona.
-Sprawdzenie rzeczywistych liczników przeskoku (`count` po tokenie escape)
-ujawniło niedorzeczną wartość **5251** (dla obrazka o zaledwie 210 pikselach!)
-pod `escape=3`, podczas gdy `escape=0` dawał same rozsądne liczniki (1–14).
+**Cause:** with the wrong escape token, the algorithm sometimes "lands" on a word
+count matching the row width by pure coincidence — especially on small images,
+where the space of possibilities is limited. Checking the actual skip counters
+(`count` following the escape token) revealed an implausible value of **5251**
+(for an image of only 210 pixels!) under `escape=3`, while `escape=0` gave only
+sensible counters (1–14).
 
-**Dodatkowa reguła walidacji:** licznik przeskoku (`count`) nie może przekraczać
-**całkowitej liczby pikseli obrazu** (`width*height`) — pojedynczy bieg
-przezroczystości fizycznie nie może być dłuższy niż cały obraz. Jeśli taki
-niedorzeczny licznik się pojawi, próba jest odrzucana, a dekoder przechodzi do
-kolejnego kandydata (`escape=0`, potem ew. kodek prosty). Naprawiono w ten sposób
-pierwszą klatkę `KEXPLO.RES` (29-klatkowa animacja eksplozji: jasna chmura →
-dym → żarzące się resztki) bez żadnej regresji na pozostałych 10 znanych plikach.
+**Additional validation rule:** the skip counter (`count`) cannot exceed the
+**total pixel count of the image** (`width*height`) — a single run of
+transparency physically cannot be longer than the entire image. If such an
+implausible counter appears, the attempt is rejected and the decoder moves on to
+the next candidate (`escape=0`, then possibly the simple codec). This fixed frame
+0 of `KEXPLO.RES` (a 29-frame explosion animation: bright cloud → smoke → glowing
+remnants) with no regression on the other 10 known files.
 
-### 4.4 Pole `type` nie determinuje jednoznacznie kodeka
+### 4.4 The `type` field does not uniquely determine the codec
 
-`type=7` zaobserwowano w **obu** kodekach:
-- `FUNKEN2.RES`, `CORAIN.RES` → kodek prosty
-- `COLOR.RES` → kodek RLE parami
+`type=7` has been observed in **both** codecs:
+- `FUNKEN2.RES`, `CORAIN.RES` → simple codec
+- `COLOR.RES` → paired RLE codec
 
-Dodatkowo odkryto **nową wartość `type=3`** (`GAMMA.RES`, 225×60, 10 klatek —
-przyciski menu z niemieckimi napisami typu "Optionen") — obsługiwana poprawnie
-przez domyślny fallback (kodek prosty), tak samo jak `type=2`.
+Additionally, a **new value `type=3`** was discovered (`GAMMA.RES`, 225×60, 10
+frames — menu buttons with German captions like "Optionen") — handled correctly
+by the default fallback (simple codec), the same as `type=2`.
 
-To znaczy, że samo `type` nie wystarcza do wyboru kodeka dla wartości `7` —
-potrzebna jest próba z walidacją. Zastosowane rozwiązanie (w konwerterze):
+This means `type` alone is not enough to choose the codec for the value `7` —
+trial with validation is needed. The solution implemented (in the converter):
 
-1. `type ∈ {1, 4, 6}` → zawsze kodek RLE parami, `dataLen` z nagłówka jest
-   ufany bezpośrednio (sprawdzone jako niezawodne — działa dla wszystkich
-   znanych plików, łącznie z kontenerami wieloklatkowymi).
-2. `type = 2` → zawsze kodek prosty.
-3. `type = 7` → najpierw **próba** kodeka RLE parami z walidacją (patrz §4.3
-   dla dokładnych kryteriów walidacji). Jeśli walidacja się nie powiedzie,
-   używany jest kodek prosty.
-4. Każda inna/nieznana wartość `type` (w tym potwierdzone `3`) → domyślnie
-   kodek prosty.
+1. `type ∈ {1, 4, 6}` → always the paired RLE codec, the header's `dataLen` is
+   trusted directly (verified as reliable — works for all known files, including
+   multi-frame containers).
+2. `type = 2` → always the simple codec.
+3. `type = 7` → first **try** the paired RLE codec with validation (see §4.3 for
+   the exact validation criteria). If validation fails, the simple codec is used.
+4. Any other/unknown `type` value (including the confirmed `3`) → the simple
+   codec by default.
 
-W KAŻDYM z powyższych przypadków token ucieczki jest dodatkowo wybierany
-per klatka metodą próby+walidacji opisaną w §4.3 (najpierw `0x0003`, potem
-`0x0000`).
+In EACH of the cases above, the escape token is additionally chosen per frame by
+the trial+validation method described in §4.3 (first `0x0003`, then `0x0000`).
 
-**Ważna obserwacja poboczna:** w `PAUSE.RES` (kodek RLE parami, `type=4`)
-ostatni wiersz niektórych klatek bywa niekompletny — dane po prostu się
-kończą, zanim wiersz osiągnie pełną szerokość. To sugeruje, że **końcowe
-przezroczyste piksele/wiersze nie muszą być jawnie zakodowane** — brak
-dalszych danych = domyślna przezroczystość do końca klatki. Z tego powodu
-walidacja w punkcie 3 dopuszcza niekompletność tylko dla **ostatniego**
-wiersza, nie dla żadnego innego.
+**Important side observation:** in `PAUSE.RES` (paired RLE codec, `type=4`) the
+last row of some frames is sometimes incomplete — the data simply ends before the
+row reaches full width. This suggests that **trailing transparent pixels/rows
+don't need to be explicitly encoded** — the absence of further data means default
+transparency to the end of the frame. For this reason, the validation in point 3
+allows incompleteness only for the **last** row, not for any other.
 
 ---
 
-## 5. Kontenery wieloklatkowe
+## 5. Multi-frame containers
 
-Pojedynczy plik `.RES` może zawierać wiele obrazów sklejonych sekwencyjnie, każdy ze
-swoim pełnym nagłówkiem (16 B) + paddingiem (4 B) + danymi. Po zdekodowaniu jednej
-klatki, następna zaczyna się dokładnie w miejscu, gdzie skończyły się dane poprzedniej.
+A single `.RES` file can contain multiple images concatenated sequentially, each
+with its own full header (16 B) + padding (4 B) + data. After decoding one frame,
+the next one starts exactly where the previous one's data ended.
 
-Potwierdzone przykłady:
-- `PAUSE.RES` → **64 klatki** (animacja obrotu postaci na spadochronie), plik zużyty
-  w 100% (0 bajtów resztek)
-- `KRANNORM.RES` → **190 klatek** (animacja żurawia/haka z migającym światełkiem
-  ostrzegawczym), plik zużyty w 100% (0 bajtów resztek), `type=1`
-- `COLOR.RES` → **46 klatek** (kolorowe kulki/gemy, każda w innym odcieniu), plik
-  zużyty w 100% (0 bajtów resztek), `type=7`, escape=`0x0000`
-- `BUTTON.RES` → **7 klatek** (pełny zestaw stanów przycisków UI: wł./wył.,
-  strzałki nawigacji przód/wstecz), plik zużyty w 100%, `type=2`
-- `FUNKEN2.RES` → **10 klatek** (animacja rozpraszającej się iskry), plik zużyty
-  w 100%, `type=7`, kodek prosty
-- `CORAIN.RES` → **33 klatki** (animacja rozbłysku/eksplozji rozpadającego się na
-  cząsteczki), plik zużyty w 100%, `type=7`, kodek prosty
-- `BLOCK.RES` → **2 klatki**, `type=4`
-- `BLOCKR.RES` / `BLOCKL.RES` → **8 klatek każdy** (pomarańczowy trójkątny
-  wskaźnik kierunkowy w prawo/lewo, różne fazy pulsowania), `type=4`
-- `GAMMA.RES` → **10 klatek** (przyciski menu z niemieckimi napisami, np.
-  "Optionen"), plik zużyty w 100%, `type=3` (nowa wartość, kodek prosty)
-- `KEXPLO.RES` → **29 klatek** (animacja eksplozji: jasna chmura → dym →
-  żarzące się resztki), plik zużyty w 100%, `type=7`
-- `SMLMENU.RES` → **7 klatek** (menu główne "SINGLE PLAYER / MULTI PLAYER /
-  INFO / HIGHSCORE / OPTIONS / SWING OUT" + warianty podświetlenia każdej
-  pozycji), plik zużyty w 100%, `type=6` (nowa wartość, kodek RLE parami)
-- `SMRM1.RES` → **12 klatek** (menu trybu gry: "Sudden Death", "New", "Load",
-  poziomy trudności Easy/Normal/Hard/Expert/Custom + podświetlenia), plik
-  zużyty w 100%, `type=6`
-- `SMRM2.RES` → **6 klatek** (menu "Competition / Arcade / Splitscreen / New /
-  Network / Join" + podświetlenia), plik zużyty w 100%, `type=6`
-
----
-
-## 6. Otwarte problemy i niepewności
-
-### 6.1 Fałszywe wykrywanie granicy klatki — ✅ rozwiązane
-Wcześniej sądzono, że `BUTTON.RES` ma tylko 2 prawdziwe klatki, a reszta pliku to
-szum powstały z przypadkowego trafienia wzorca nagłówka. Po poprawce tokenu
-ucieczki (§4.3) okazało się, że to były **prawdziwe, poprawne klatki**, po prostu
-źle dekodowane. Wszystkie 11 przebadanych plików `.RES` zużywają się teraz w 100%
-(0 bajtów resztek) z aktualnym dekoderem.
-
-### 6.2 `FONTS.RES` nie pasuje do modelu nagłówka — JEDYNY nierozwiązany problem
-Parsowanie standardowym nagłówkiem 16 B dało bezsensowne wartości
-(`w=3, h=57349`) — plik ma **inną strukturę na najwyższym poziomie**.
-
-**Stan dochodzenia (wypróbowane i odrzucone hipotezy):**
-- Nie jest to format archiwum opisany w §10 — pierwsze 4 bajty jako "liczba
-  wpisów" (=3) nie prowadzą do sensownych 12-bajtowych nazw ASCII w
-  spodziewanym miejscu.
-- Przeszukano cały plik (64047 B) w poszukiwaniu osadzonych standardowych
-  nagłówków obrazów (`magic=0x0014`, `const_0f=0x0F`) — **zero trafień**.
-  Glify nie są więc zapisane jako standardowe obrazy `.RES`.
-- Bajty 16–136 (121 B) to same zera, pierwszy niezerowy bajt pojawia się
-  dopiero na offsecie 137 — sugeruje jakąś tabelę (szerokości znaków?
-  offsety do glifów?), ale żadna prosta wielkość rekordu (1, 2 lub 4 bajty
-  na wpis) nie daje sensownego podziału pasującego do standardowego
-  zakresu ASCII (znaki drukowalne zaczynają się od kodu 32).
-- Wypróbowano renderowanie surowych bajtów jako bitmapy (RGB555 i skala
-  szarości 8-bit) przy różnych szerokościach (8–256 px) — żaden wariant
-  nie ujawnił czytelnych kształtów liter.
-- Sprawdzono hipotezę "3 kopie kolorystyczne tej samej czcionki" (podział
-  danych na 3 równe części) — obalona; środkowa część zawiera powtarzający
-  się wzorzec wypełniający (`0x0300` w kółko), nie dane pikseli.
-
-**Do zbadania w przyszłości:** analiza `SWING.EXE` pod kątem kodu
-renderującego tekst może ujawnić dokładny układ tego formatu (np. przez
-znalezienie funkcji `DrawText`/`DrawChar` i prześledzenie, jak indeksuje
-dane z `FONTS.RES`).
-
-### 6.3 `CORAIN.RES` — ✅ rozwiązane
-Wcześniej dekodował się "bez błędu", ale renderowany obraz przypominał zaszumione
-ukośne pasy. Przyczyną był błędny token ucieczki (patrz §4.3) — po poprawce
-(próba `0x0003`→`0x0000` per klatka z walidacją, zamiast akceptowania obu naraz)
-plik dekoduje się czysto jako **33-klatkowa animacja rozbłysku/eksplozji**
-rozpadającego się na pojedyncze cząsteczki, zużywając plik w 100%.
-
-### 6.4 Znaczenie pola `extra` i dokładne znaczenie 4 B paddingu
-Nieznane. Sprawdzono i **obalono** hipotezę, że `extra` = token ucieczki (działało
-przypadkiem dla `COLOR.RES`, ale łamało `FUNKEN2.RES` — patrz §4.3). Obserwowane
-wartości `extra`: `0` (FUNKEN2, CORAIN) oraz `3` (CD, PAUSE, BUTTON, KRANNORM).
-Padding zawsze pomijany — nie sprawdzono systematycznie, czy zawsze jest zerowy
-we wszystkich 66 plikach.
-
-### 6.5 Plik `SWING.EXE` jeszcze nie przeanalizowany
-Może zawierać dodatkowe wskazówki (np. tabele offsetów zasobów, jawne stałe
-formatu, ewentualną paletę) — wciąż do zbadania.
+Confirmed examples:
+- `PAUSE.RES` → **64 frames** (character spinning on a parachute animation), file
+  consumed 100% (0 leftover bytes)
+- `KRANNORM.RES` → **190 frames** (crane/hook animation with a blinking warning
+  light), file consumed 100% (0 leftover bytes), `type=1`
+- `COLOR.RES` → **46 frames** (colored marbles/gems, each a different hue), file
+  consumed 100% (0 leftover bytes), `type=7`, escape=`0x0000`
+- `BUTTON.RES` → **7 frames** (a full set of UI button states: on/off, forward/back
+  navigation arrows), file consumed 100%, `type=2`
+- `FUNKEN2.RES` → **10 frames** (dissipating spark animation), file consumed 100%,
+  `type=7`, simple codec
+- `CORAIN.RES` → **33 frames** (flash/explosion animation breaking apart into
+  particles), file consumed 100%, `type=7`, simple codec
+- `BLOCK.RES` → **2 frames**, `type=4`
+- `BLOCKR.RES` / `BLOCKL.RES` → **8 frames each** (orange triangular directional
+  indicator pointing right/left, different pulsing phases), `type=4`
+- `GAMMA.RES` → **10 frames** (menu buttons with German captions, e.g.
+  "Optionen"), file consumed 100%, `type=3` (new value, simple codec)
+- `KEXPLO.RES` → **29 frames** (explosion animation: bright cloud → smoke →
+  glowing remnants), file consumed 100%, `type=7`
+- `SMLMENU.RES` → **7 frames** (main menu "SINGLE PLAYER / MULTI PLAYER / INFO /
+  HIGHSCORE / OPTIONS / SWING OUT" + highlight variants for each entry), file
+  consumed 100%, `type=6` (new value, paired RLE codec)
+- `SMRM1.RES` → **12 frames** (game mode menu: "Sudden Death", "New", "Load",
+  difficulty levels Easy/Normal/Hard/Expert/Custom + highlights), file consumed
+  100%, `type=6`
+- `SMRM2.RES` → **6 frames** (menu "Competition / Arcade / Splitscreen / New /
+  Network / Join" + highlights), file consumed 100%, `type=6`
 
 ---
 
-## 7. Narzędzie konwertujące
+## 6. Open problems and uncertainties
 
-Powstała samodzielna aplikacja HTML/JS (`RES_to_PNG_Converter.html`) implementująca
-oba potwierdzone kodeki (§4.1, §4.2), automatycznie wybierane na podstawie pola
-`type`. Działa w pełni lokalnie w przeglądarce (bez wysyłania plików na serwer),
-obsługuje kontenery wieloklatkowe, eksport pojedynczych PNG oraz zbiorczy eksport
-ZIP wszystkich klatek.
+### 6.1 False frame-boundary detection — ✅ resolved
+It was previously thought that `BUTTON.RES` had only 2 real frames, and that the
+rest of the file was noise from randomly matching the header pattern. After the
+escape-token fix (§4.3) it turned out these were **real, valid frames**, simply
+decoded incorrectly. All 11 examined `.RES` files are now consumed 100% (0
+leftover bytes) with the current decoder.
 
----
+### 6.2 `FONTS.RES` does not match the header model — the ONLY unresolved issue
+Parsing with the standard 16 B header gave nonsensical values (`w=3, h=57349`) —
+the file has a **different top-level structure**.
 
-## 8. Dziennik ustaleń (chronologicznie)
+**State of investigation (hypotheses tried and rejected):**
+- It is not the archive format described in §10 — the first 4 bytes as an "entry
+  count" (=3) don't lead to sensible 12-byte ASCII names at the expected location.
+- The whole file (64047 B) was searched for embedded standard image headers
+  (`magic=0x0014`, `const_0f=0x0F`) — **zero hits**. So the glyphs are not stored
+  as standard `.RES` images.
+- Bytes 16–136 (121 B) are all zero, the first non-zero byte only appears at
+  offset 137 — suggesting some kind of table (character widths? glyph offsets?),
+  but no simple record size (1, 2, or 4 bytes per entry) gives a sensible split
+  matching the standard ASCII range (printable characters start at code 32).
+- Rendering the raw bytes as a bitmap was tried (RGB555 and 8-bit grayscale) at
+  various widths (8–256 px) — no variant revealed readable letter shapes.
+- The "3 color copies of the same font" hypothesis was tested (splitting the data
+  into 3 equal parts) — disproved; the middle part contains a repeating filler
+  pattern (`0x0300` over and over), not pixel data.
 
-1. **CD.RES** (32×32, `type=4`) — pierwszy złamany plik. Ustalono strukturę
-   nagłówka, kodek RLE parami, oraz (błędnie na starcie) format koloru RGB565 →
-   poprawiono na **RGB555** po teście na `PAUSE.RES`.
-2. **PAUSE.RES** (64 klatki, `type=4`) — potwierdzenie, że pliki mogą być
-   kontenerami wielu sklejonych obrazów; 100% zgodność rozmiaru pliku z sumą klatek.
-3. **BUTTON.RES** (`type=2`) — odkryto **drugi kodek** (prosty strumień bez
-   licznika po escape); poprzedni algorytm (z `type=4`) powodował widoczne
-   zniekształcenia obrazu przez błędne "zjadanie" kolejnych pikseli jako liczników.
-4. **FUNKEN2.RES** (`type=7`) — potwierdzono, że ten sam prosty kodek pasuje
-   też do `type=7` (mały 8×8 sprite "iskry", poprawnie odczytany).
-5. **CORAIN.RES** (`type=7`) — kodek formalnie "działa" (zużywa dokładnie
-   właściwą liczbę słów), ale wynik wizualny budzi wątpliwości — otwarty problem.
-6. **FONTS.RES** — nie pasuje do modelu nagłówka w ogóle — otwarty problem.
-7. **KRANNORM.RES** (`type=1`, 190 klatek) — odkryto **trzecią wartość `type`
-   mapującą się na już znany kodek RLE parami** (ten sam co `type=4`), a nie na
-   nowy, osobny kodek. Wcześniejsza wersja konwertera (traktująca "wszystko poza
-   `type=4`" jako kodek prosty) błędnie stosowała do tego pliku kodek prosty,
-   co dawało zniekształcony obraz — poprawiono, dodając `type=1` do grupy RLE
-   parami. Animacja żurawia/haka z migającym światełkiem zdekodowana bezbłędnie,
-   plik zużyty w 100%.
-8. **COLOR.RES** (`type=7`, 46 klatek, kolorowe kulki/gemy) — odkryto, że token
-   ucieczki nie zawsze jest równy `0x0003` — ten plik używa `0x0000`. Sprawdzono
-   kilka hipotez (m.in. że escape = wartość pola `extra` z nagłówka — okazała się
-   fałszywa, obalona na `FUNKEN2.RES`). Rozwiązanie z tamtej sesji (akceptować
-   **oba** tokeny jednocześnie) okazało się niepoprawne — patrz punkt 9.
-9. **Regresja i poprawka tokenu ucieczki** — zgłoszono, że `KRANNORM.RES`
-   (wcześniej perfekcyjny) zaczął się "łamać" na częściach klatek (zakresy
-   0–36 i 88–189 z 190), a `BLOCK.RES`/`BLOCKR.RES` dostały dziury/przesunięcia,
-   mimo że `BLOCKL.RES` pozostał poprawny w obu wersjach. Diagnostyka wykazała
-   dokładną korelację: zepsute klatki `KRANNORM.RES` to te zawierające legalny
-   literalny piksel o wartości `0` (czysta czerń), błędnie zjadany jako escape.
-   **Poprawka:** token ucieczki wybierany jest per klatka metodą próby+walidacji
-   (najpierw `0x0003`, w razie niepowodzenia `0x0000`), nigdy oba naraz — patrz
-   §4.3. Naprawiło to regresję (KRANNORM 190/190, BLOCK/BLOCKR/BLOCKL czyste) BEZ
-   utraty wcześniejszych postępów (COLOR/BUTTON/FUNKEN2 nadal poprawne) i jako
-   nieoczekiwany bonus **rozwiązało też odwieczny problem szumu w `CORAIN.RES`**
-   (§6.3) — okazał się być tym samym błędem tokenu ucieczki. Wszystkie 11 znanych
-   plików `.RES` zużywają się teraz w 100% (0 B resztek).
-10. **GAMMA.RES + GAMMA.SWG** — pierwsza napotkana para plików `.RES`+`.SWG`.
-    `GAMMA.RES` ujawnił **nową wartość `type=3`** (225×60, 10 klatek — przyciski
-    menu z niemieckimi napisami typu "Optionen"), obsłużoną poprawnie przez
-    domyślny fallback (kodek prosty). `GAMMA.SWG` okazał się być **zupełnie
-    innym formatem** — surową, nieskompresowaną bitmapą pełnoekranową 640×480
-    RGB555 bez żadnego nagłówka (614400 B = dokładnie 640×480×2), przedstawiającą
-    ekran ustawień korekcji gamma gry (4 podglądy logo "SWING" przy różnych
-    poziomach jasności). Szczegóły w §9.
-11. **KEXPLO.RES** (`type=7`, 29 klatek, animacja eksplozji) — pierwsza klatka
-    (mały 14×15 obrazek) dekodowała się jako szum, mimo że walidacja z §4.3
-    formalnie przechodziła zarówno dla `escape=3`, jak i `escape=0`. Odkryto,
-    że przy złym tokenie ucieczki licznik przeskoku może osiągnąć niedorzeczną
-    wartość (znaleziono `5251` dla obrazka o 210 pikselach) — dodano regułę
-    odrzucającą próbę, gdy pojedynczy licznik przekracza `width*height` (patrz
-    §4.5). Naprawiło to klatkę 0 bez regresji na pozostałych plikach.
-12. **SMLMENU.RES / SMRM1.RES / SMRM2.RES** (menu gry) — odkryto **czwartą
-    wartość `type=6`**, mapującą się na kodek RLE parami (jak `type=1` i `4`),
-    a nie na kodek prosty (domyślny fallback dla nieznanych `type`, który był
-    źle dobierany, dając częściowo poprawny, częściowo zaszumiony obraz —
-    dokładnie objaw opisany przez użytkownika: "przesunięte belki/szum").
-    Po dodaniu `type=6` do grupy RLE parami wszystkie trzy pliki dekodują się
-    w 100% jako kompletne, wielopozycyjne menu gry (menu główne, wybór trybu,
-    poziom trudności) wraz z wariantami podświetlenia każdej pozycji.
-13. **EXTRAS.RES + HELPMODE.RES** — odkryto, że to **NIE są obrazy**, tylko
-    **archiwa/paczki** zawierające wiele nazwanych podplików (widoczne czytelne
-    nazwy ASCII w środku, np. `HEDGE.3LB`, `STONE.3LB`, `GSTAR.6SP`, `M00.DAT`).
-    Zrekonstruowano format kontenera (patrz §10) — każdy podplik o rozszerzeniu
-    `.3LB`/`.6SP` okazał się być zwykłym, już znanym plikiem `.RES` (zaczyna się
-    od `magic=0x14, type=1`), dekodującym się bezbłędnie tym samym dekoderem.
-    `EXTRAS.RES`: 38/38 podplików to obrazy (łącznie 1502 klatki — biblioteka
-    **power-upów** do gry: kolczasty, kamienny, wieża, serce, czaszka,
-    gwiazda, błyskawica/twist, flesz). `HELPMODE.RES`: 29/58 podplików to
-    obrazy typu `.6SP` (1217 klatek) — **te same power-upy, ale w wyższej
-    rozdzielczości (2× większe)**, pozostałe 29 to pliki `.DAT`
-    (`M00.DAT`–`M44.DAT`) — prawdopodobnie teksty pomocy/dialogów, nie obrazy,
-    nierozpoznawane tym dekoderem (inny cel, nie błąd). **Uwaga:** zwykłe,
-    grywalne kulki (nie power-upy) NIE są w tych plikach — znalezione dopiero
-    w formacie `.SET`, patrz punkt 14.
-14. **NORMAL.SET + MAKE.SET + SHOWSET.EXE** (folder `KUGELN`) — namierzono
-    wreszcie **zwykłe, grywalne kulki**. `NORMAL.SET` ("standard") zaczyna się
-    od tekstowej sygnatury `"Gib mir 'ne Kugel\n"` (niem. "Daj mi kulkę") +
-    nazwa zestawu, po czym następuje zwykły blok obrazów `.RES` — **46 kulek
-    30×30 px**, dekodowanych bez żadnych zmian w dekoderze (format `.SET`
-    opisany w §11). `MAKE.SET` okazał się fałszywym tropem — to zwykły
-    makefile Watcom C/C++ do kompilacji `SHOWSET.EXE`, nie dane graficzne.
-    Po bloku obrazów w `NORMAL.SET` zostaje 3033 B nierozpoznanej struktury,
-    zaczynającej się identyczną sekwencją bajtów co `FONTS.RES` — poszlaka
-    wskazująca na możliwy związek, odłożona na później zgodnie z priorytetem
-    ustalonym przez użytkownika.
+**To investigate in the future:** analyzing `SWING.EXE` for text-rendering code
+might reveal the exact layout of this format (e.g. by finding a
+`DrawText`/`DrawChar` function and tracing how it indexes data from `FONTS.RES`).
+
+### 6.3 `CORAIN.RES` — ✅ resolved
+It previously decoded "without error", but the rendered image looked like noisy
+diagonal stripes. The cause was the wrong escape token (see §4.3) — after the fix
+(trying `0x0003`→`0x0000` per frame with validation, instead of accepting both at
+once) the file decodes cleanly as a **33-frame animation** of a flash/explosion
+breaking apart into individual particles, consuming the file 100%.
+
+### 6.4 Meaning of the `extra` field and the exact meaning of the 4 B padding
+Unknown. The hypothesis that `extra` = escape token was tested and **disproved**
+(it worked by coincidence for `COLOR.RES`, but broke `FUNKEN2.RES` — see §4.3).
+Observed `extra` values: `0` (FUNKEN2, CORAIN) and `3` (CD, PAUSE, BUTTON,
+KRANNORM). Padding is always skipped — it hasn't been systematically checked
+whether it is always zero across all 66 files.
+
+### 6.5 The file `SWING.EXE` has not been analyzed yet
+It may contain additional clues (e.g. resource offset tables, explicit format
+constants, a possible palette) — still to be investigated.
 
 ---
 
-## 9. Format `.SWG` — surowe bitmapy pełnoekranowe
+## 7. Conversion tool
 
-Niektóre zasoby graficzne występują jako osobny plik `.SWG` obok `.RES` o tej
-samej nazwie (np. `GAMMA.RES` + `GAMMA.SWG`). To **zupełnie inny, znacznie
-prostszy format** niż `.RES`:
-
-- **Brak nagłówka** — plik zaczyna się od razu od danych pikseli
-- **Brak kompresji** — każde 16-bitowe słowo (little-endian) to jeden piksel
-  RGB555 (ten sam format koloru co w `.RES`, patrz §3), czytane wiersz po
-  wierszu, bez żadnych tokenów ucieczki/przezroczystości
-- **Stały rozmiar 640×480** — jedyny zbadany dotąd plik (`GAMMA.SWG`) ma
-  dokładnie `640*480*2 = 614400` bajtów, co idealnie odpowiada tej rozdzielczości
-  bez reszty
-- Rezultat wizualny: pełnoekranowy ekran menu/ustawień gry (w wypadku
-  `GAMMA.SWG` — ekran kalibracji gamma z czterema podglądami logo "SWING" przy
-  różnych poziomach korekcji jasności i niemieckim tekstem interfejsu)
-
-**Hipoteza robocza:** pliki `.SWG` to statyczne tła pełnoekranowe (menu, ekrany
-ładowania, ustawienia), podczas gdy `.RES` to elementy UI/sprite'y nakładane na
-te tła (w wypadku `GAMMA` — przyciski menu z `GAMMA.RES`). Nie sprawdzono jeszcze,
-czy WSZYSTKIE pliki `.SWG` mają rozdzielczość 640×480, czy to może się różnić —
-wymaga więcej próbek.
+A standalone HTML/JS application (`RES_to_PNG_Converter.html`) was built,
+implementing both confirmed codecs (§4.1, §4.2), automatically selected based on
+the `type` field. It runs entirely locally in the browser (no files are uploaded
+to a server), supports multi-frame containers, single PNG export, and bulk ZIP
+export of all frames.
 
 ---
 
-## 10. Format archiwum — pliki-paczki z nazwanymi podplikami
+## 8. Findings log (chronological)
 
-Niektóre pliki o rozszerzeniu `.RES` (np. `EXTRAS.RES`, `HELPMODE.RES`) wcale
-nie są pojedynczym obrazem — to **archiwa** bundlujące wiele nazwanych
-podplików, rozpoznawalne po tym, że standardowy nagłówek obrazu (§2) nie
-pasuje (`magic ≠ 0x0014`), ale pierwsze bajty dają się odczytać jako liczbę
-wpisów, po której następują czytelne nazwy ASCII w stylu 8.3 (np.
-`HEDGE.3LB`, `GSTAR.6SP`).
+1. **CD.RES** (32×32, `type=4`) — the first file cracked. The header structure and
+   paired RLE codec were established, along with (incorrectly at first) the
+   RGB565 color format → corrected to **RGB555** after testing on `PAUSE.RES`.
+2. **PAUSE.RES** (64 frames, `type=4`) — confirmed that files can be containers of
+   multiple concatenated images; 100% match between file size and the sum of frames.
+3. **BUTTON.RES** (`type=2`) — discovered the **second codec** (simple stream with
+   no counter after the escape); the previous algorithm (from `type=4`) caused
+   visible image corruption by incorrectly "eating" subsequent pixels as counters.
+4. **FUNKEN2.RES** (`type=7`) — confirmed that the same simple codec also fits
+   `type=7` (a small 8×8 "spark" sprite, read correctly).
+5. **CORAIN.RES** (`type=7`) — the codec formally "works" (consumes exactly the
+   right number of words), but the visual result raises doubts — an open issue.
+6. **FONTS.RES** — doesn't match the header model at all — an open issue.
+7. **KRANNORM.RES** (`type=1`, 190 frames) — discovered a **third `type` value
+   mapping to an already-known codec** (paired RLE, same as `type=4`), not a new,
+   separate codec. The earlier version of the converter (treating "anything other
+   than `type=4`" as the simple codec) incorrectly applied the simple codec to
+   this file, producing a distorted image — fixed by adding `type=1` to the
+   paired-RLE group. The crane/hook animation with a blinking light decoded
+   flawlessly, file consumed 100%.
+8. **COLOR.RES** (`type=7`, 46 frames, colored marbles/gems) — discovered that the
+   escape token isn't always `0x0003` — this file uses `0x0000`. Several
+   hypotheses were checked (including that escape = the header's `extra` field —
+   turned out to be false, disproved on `FUNKEN2.RES`). The fix from that session
+   (accepting **both** tokens at once) turned out to be incorrect — see point 9.
+9. **Regression and escape-token fix** — it was reported that `KRANNORM.RES`
+   (previously perfect) started "breaking" on parts of frames (ranges 0–36 and
+   88–189 out of 190), and `BLOCK.RES`/`BLOCKR.RES` got holes/shifts, even though
+   `BLOCKL.RES` remained correct in both versions. Diagnostics showed an exact
+   correlation: the broken `KRANNORM.RES` frames were exactly those containing a
+   legitimate literal pixel with value `0` (pure black), incorrectly eaten as an
+   escape. **Fix:** the escape token is chosen per frame by trial+validation
+   (first `0x0003`, on failure `0x0000`), never both at once — see §4.3. This
+   fixed the regression (KRANNORM 190/190, BLOCK/BLOCKR/BLOCKL clean) WITHOUT
+   losing earlier progress (COLOR/BUTTON/FUNKEN2 still correct), and as an
+   unexpected bonus **also solved the long-standing noise problem in
+   `CORAIN.RES`** (§6.3) — it turned out to be the same escape-token bug. All 11
+   known `.RES` files are now consumed 100% (0 B leftover).
+10. **GAMMA.RES + GAMMA.SWG** — the first `.RES`+`.SWG` file pair encountered.
+    `GAMMA.RES` revealed a **new `type=3` value** (225×60, 10 frames — menu
+    buttons with German captions like "Optionen"), handled correctly by the
+    default fallback (simple codec). `GAMMA.SWG` turned out to be a **completely
+    different format** — a raw, uncompressed full-screen 640×480 RGB555 bitmap
+    with no header at all (614400 B = exactly 640×480×2), showing the game's
+    gamma correction settings screen (4 previews of the "SWING" logo at different
+    brightness levels). Details in §9.
+11. **KEXPLO.RES** (`type=7`, 29 frames, explosion animation) — the first frame
+    (a small 14×15 image) decoded as noise, even though the §4.3 validation
+    formally passed for both `escape=3` and `escape=0`. It was discovered that
+    with the wrong escape token, the skip counter can reach an implausible value
+    (found `5251` for an image of 210 pixels) — added a rule rejecting the
+    attempt when a single counter exceeds `width*height` (see §4.5). This fixed
+    frame 0 with no regression on the other files.
+12. **SMLMENU.RES / SMRM1.RES / SMRM2.RES** (game menus) — discovered a **fourth
+    `type=6` value**, mapping to the paired RLE codec (like `type=1` and `4`),
+    not the simple codec (the default fallback for unknown `type` values, which
+    was being wrongly chosen, giving a partially correct, partially noisy image —
+    exactly the symptom described by the user: "shifted bars/noise"). After
+    adding `type=6` to the paired-RLE group, all three files decode 100% as
+    complete, multi-item game menus (main menu, mode selection, difficulty
+    level) along with highlight variants for each entry.
+13. **EXTRAS.RES + HELPMODE.RES** — discovered that these are **NOT images**, but
+    **archives/packages** containing several named sub-files (readable ASCII
+    names visible inside, e.g. `HEDGE.3LB`, `STONE.3LB`, `GSTAR.6SP`, `M00.DAT`).
+    Reconstructed the container format (see §10) — every sub-file with the
+    extension `.3LB`/`.6SP` turned out to be an ordinary, already-known `.RES`
+    file (starting with `magic=0x14, type=1`), decoding flawlessly with the same
+    decoder. `EXTRAS.RES`: 38/38 sub-files are images (1502 frames total — a
+    library of **power-ups** for the game: spiky, stone, tower, heart, skull,
+    star, lightning/twist, flash). `HELPMODE.RES`: 29/58 sub-files are `.6SP`
+    images (1217 frames) — **the same power-ups, but at a higher resolution (2x
+    larger)**, the other 29 are `.DAT` files (`M00.DAT`–`M44.DAT`) — probably
+    help/dialog text, not images, not recognized by this decoder (a different
+    purpose, not a bug). **Note:** the ordinary, playable marbles (not power-ups)
+    are NOT in these files — found only in the `.SET` format, see point 14.
+14. **NORMAL.SET + MAKE.SET + SHOWSET.EXE** (folder `KUGELN`) — finally located
+    the **ordinary, playable marbles**. `NORMAL.SET` ("standard") starts with the
+    text signature `"Gib mir 'ne Kugel\n"` (German for "give me a marble") +
+    the set name, followed by a plain `.RES` image block — **46 marbles, 30×30
+    px**, decoded with no changes to the decoder (`.SET` format described in
+    §11). `MAKE.SET` turned out to be a red herring — it's an ordinary Watcom
+    C/C++ makefile for building `SHOWSET.EXE`, not graphics data. After the image
+    block in `NORMAL.SET`, 3033 B of unrecognized structure remains, starting
+    with the identical byte sequence as `FONTS.RES` — a clue suggesting a
+    possible connection, set aside for later per the user's established priority.
 
-**Struktura (w 100% zwalidowana — każdy bajt się zgadza):**
+---
+
+## 9. `.SWG` format — raw full-screen bitmaps
+
+Some graphics resources appear as a separate `.SWG` file alongside a `.RES` file
+of the same name (e.g. `GAMMA.RES` + `GAMMA.SWG`). This is a **completely
+different, much simpler format** than `.RES`:
+
+- **No header** — the file starts directly with pixel data
+- **No compression** — every 16-bit word (little-endian) is one RGB555 pixel
+  (the same color format as `.RES`, see §3), read row by row, with no
+  escape/transparency tokens at all
+- **Fixed size 640×480** — the only file examined so far (`GAMMA.SWG`) has
+  exactly `640*480*2 = 614400` bytes, which matches this resolution perfectly
+  with no remainder
+- Visual result: a full-screen game menu/settings screen (in the case of
+  `GAMMA.SWG` — the gamma calibration screen with four previews of the "SWING"
+  logo at different brightness correction levels and German UI text)
+
+**Working hypothesis:** `.SWG` files are static full-screen backgrounds (menus,
+loading screens, settings), while `.RES` files are UI elements/sprites overlaid
+on those backgrounds (in the case of `GAMMA` — the menu buttons from
+`GAMMA.RES`). It hasn't yet been checked whether ALL `.SWG` files are 640×480, or
+whether this can vary — more samples are needed.
+
+---
+
+## 10. Archive format — package files with named sub-files
+
+Some files with the `.RES` extension (e.g. `EXTRAS.RES`, `HELPMODE.RES`) are not a
+single image at all — they are **archives** bundling several named sub-files,
+recognizable by the fact that the standard image header (§2) doesn't match
+(`magic ≠ 0x0014`), but the first bytes can be read as an entry count, followed by
+readable 8.3-style ASCII names (e.g. `HEDGE.3LB`, `GSTAR.6SP`).
+
+**Structure (100% validated — every byte matches):**
 
 ```
-offset  rozmiar        pole           opis
-0x00    u32            count          liczba wpisów w archiwum
+offset  size           field          description
+0x00    u32            count          number of entries in the archive
 
-Następnie `count` rekordów po 20 bajtów każdy:
-0x00    char[12]       name           nazwa 8.3, dopełniona zerami (np. "HEDGE.3LB\0\0\0")
-0x0C    u32            size           rozmiar danych tego wpisu w bajtach
-0x10    u32            offset         offset danych wpisu, liczony od początku pliku
+Then `count` records of 20 bytes each:
+0x00    char[12]       name           8.3 name, zero-padded (e.g. "HEDGE.3LB\0\0\0")
+0x0C    u32            size           size of this entry's data in bytes
+0x10    u32            offset         offset of the entry's data, from the start of the file
 
-Zaraz po tabeli nagłówków: dane wszystkich wpisów, sklejone sekwencyjnie
-w tej samej kolejności co tabela (offset pierwszego wpisu = koniec tabeli;
-offset każdego kolejnego = offset poprzedniego + jego size).
+Right after the header table: the data of all entries, concatenated sequentially
+in the same order as the table (the offset of the first entry = end of the
+table; the offset of each next entry = the previous one's offset + its size).
 ```
 
-Struct Python:
+Python struct:
 ```python
 count = struct.unpack_from('<I', data, 0)[0]
 pos = 4
@@ -541,72 +533,71 @@ for i in range(count):
     pos += 20
 ```
 
-**Zawartość podplików:** wpisy o rozszerzeniach `.3LB` i `.6SP` to zwyczajne
-pliki w już poznanym formacie `.RES` (zaczynają się od `magic=0x0014,
-type=1` — kodek RLE parami) — dekodowane bez żadnych zmian w istniejącym
-dekoderze. Wpisy `.DAT` NIE są obrazami (nie pasują do nagłówka `.RES`) —
-prawdopodobnie dane tekstowe/skryptowe (w `HELPMODE.RES` nazwy `M00.DAT`
-do `M44.DAT` sugerują ponumerowane wiadomości/teksty pomocy).
+**Sub-file content:** entries with the `.3LB` and `.6SP` extensions are ordinary
+files in the already-known `.RES` format (starting with `magic=0x0014,
+type=1` — paired RLE codec) — decoded with no changes to the existing decoder.
+`.DAT` entries are NOT images (they don't match the `.RES` header) — probably
+text/script data (in `HELPMODE.RES` the names `M00.DAT` through `M44.DAT`
+suggest numbered help messages/texts).
 
-**Potwierdzone przykłady:**
-- `EXTRAS.RES` — 38 wpisów, wszystkie `.3LB`, wszystkie obrazy, plik zużyty
-  w 100% (2467976/2467976 B). Zawartość: biblioteka **power-upów** do gry
-  (zwykłe grywalne kulki są w osobnym formacie `.SET`, patrz §11).
-- `HELPMODE.RES` — 58 wpisów (29× `.6SP` obrazy + 29× `.DAT` dane tekstowe),
-  plik zużyty w 100% (7435338/7435338 B).
+**Confirmed examples:**
+- `EXTRAS.RES` — 38 entries, all `.3LB`, all images, file consumed 100%
+  (2467976/2467976 B). Content: a library of **power-ups** for the game (the
+  ordinary playable marbles are in the separate `.SET` format, see §11).
+- `HELPMODE.RES` — 58 entries (29× `.6SP` images + 29× `.DAT` text data), file
+  consumed 100% (7435338/7435338 B).
 
-**Otwarte pytanie:** czy rozszerzenia `.3LB`/`.6SP` niosą jakieś dodatkowe
-znaczenie (np. liczbę klatek animacji zakodowaną w nazwie), czy to tylko
-dowolne etykiety nadane przez twórców gry — nie sprawdzono.
-
----
-
-## 11. Format `.SET` — zestawy skórek kulek
-
-Pliki `.SET` (folder `KUGELN` — niem. "kulki") to konfigurowalne w grze
-**zestawy wyglądu kulek**. Struktura, potwierdzona na `NORMAL.SET`:
-
-```
-offset  rozmiar  pole            opis
-0x00    19 B     signature       tekst ASCII "Gib mir 'ne Kugel\n" + bajt 0x00
-0x14    12 B     name            nazwa zestawu, ASCII zero-padded (np. "standard")
-0x20    4 B      unknown1        obserwowane: 0
-0x24    4 B      unknown2        obserwowane: wartość niezerowa (możliwy checksum)
-0x28    4 B      unknown3        obserwowane: 0
-0x2C    4 B      imageBlockSize  rozmiar w bajtach bloku obrazów, który następuje
-```
-
-Zaraz po 48-bajtowym nagłówku zaczyna się **zwykły, już znany blok obrazów
-`.RES`** (kontener wieloklatkowy, `type=1`/RLE parami) — dekodowany bez
-ŻADNYCH zmian w istniejącym dekoderze. Pole `imageBlockSize` jest w
-praktyce redundantne: istniejąca pętla dekodująca sama zatrzymuje się
-dokładnie tam, gdzie kończy się ostatni prawidłowy nagłówek obrazu.
-
-**Potwierdzony przykład — `NORMAL.SET`** (nazwa wewnętrzna: "standard"):
-**46 kulek 30×30 px**, dokładnie te same barwy/wzory co w `COLOR.RES`
-(jednokolorowe: niebieska, czerwona, zielona, turkusowa, fioletowa,
-brązowa, czarna, magenta, pomarańczowa; wielobarwne/marmurkowe warianty;
-srebrna; kulki z teksturą specjalną) — to najwyraźniej **standardowy,
-domyślny zestaw kulek do gry**.
-
-**Nierozpoznana reszta pliku:** po bloku obrazów (75624 z 78705 B)
-zostaje 3033 B nieznanej struktury. Uwaga: te bajty zaczynają się
-**dokładnie tą samą sekwencją** co pierwsze bajty `FONTS.RES`
-(`01/03 00 00 00 | 03 00 05 e0 01 00 00 00` + długi ciąg zer) — silna
-poszlaka, że to mniejsza instancja tej samej, wciąż nierozpracowanej
-struktury (możliwe, że nazwy/etykiety kolorów kulek, zakodowane w tym
-samym nieznanym formacie co czcionki). Odłożone na później zgodnie z
-priorytetem — `FONTS.RES` i ta struktura nie są obecnie kluczowe.
-
-**Plik `MAKE.SET` to fałszywy trop — nie jest to dane gry.** To zwykły
-**makefile Watcom C/C++** (skrypt budowania) dla `SHOWSET.EXE`, przypadkiem
-noszący rozszerzenie `.SET`. Zawiera jawny tekst: listę plików źródłowych
-(`showset.obj`, `graphasm.obj`, `graphik.obj`, `newalloc.obj`), bibliotek
-(`mss.lib`, `vidlib.lib`) i komend kompilatora (`wcc386`, `tasm`). Ciekawy
-efekt uboczny: **ujawnia nazwy plików źródłowych narzędzia `SHOWSET.EXE`**
-(podglądarki zestawów kulek) — przydatne, gdyby kiedyś analizować ten
-plik wykonywalny.
+**Open question:** whether the `.3LB`/`.6SP` extensions carry any additional
+meaning (e.g. an animation frame count encoded in the name), or whether they're
+just arbitrary labels given by the game's developers — not checked.
 
 ---
 
-*Ten dokument będzie aktualizowany po każdym kolejnym ustaleniu dotyczącym formatu.*
+## 11. `.SET` format — marble skin sets
+
+`.SET` files (folder `KUGELN` — German for "marbles") are the game's
+configurable **marble appearance sets**. Structure, confirmed on `NORMAL.SET`:
+
+```
+offset  size     field           description
+0x00    19 B     signature       ASCII text "Gib mir 'ne Kugel\n" + byte 0x00
+0x14    12 B     name            set name, zero-padded ASCII (e.g. "standard")
+0x20    4 B      unknown1        observed: 0
+0x24    4 B      unknown2        observed: a non-zero value (possibly a checksum)
+0x28    4 B      unknown3        observed: 0
+0x2C    4 B      imageBlockSize  size in bytes of the image block that follows
+```
+
+Right after the 48-byte header, a **plain, already-known `.RES` image block**
+begins (a multi-frame container, `type=1`/paired RLE), decoded with NO changes to
+the existing decoder. The `imageBlockSize` field is, in practice, redundant: the
+existing decoding loop stops on its own exactly where the last valid image header
+ends.
+
+**Confirmed example — `NORMAL.SET`** (internal name: "standard"): **46 marbles,
+30×30 px**, exactly the same colors/patterns as in `COLOR.RES` (solid colors:
+blue, red, green, turquoise, purple, brown, black, magenta, orange; multicolor/
+marbled variants; silver; marbles with a special texture) — this is apparently
+the **standard, default marble set** for the game.
+
+**Unrecognized remainder of the file:** after the image block (75624 out of
+78705 B), 3033 B of unknown structure remains. Note: these bytes begin with
+**exactly the same sequence** as the first bytes of `FONTS.RES`
+(`01/03 00 00 00 | 03 00 05 e0 01 00 00 00` + a long run of zeros) — strong
+evidence that this is a smaller instance of the same, still-unresolved structure
+(possibly marble color names/labels, encoded in the same unknown format as the
+fonts). Set aside for later per priority — `FONTS.RES` and this structure are not
+currently critical.
+
+**The file `MAKE.SET` is a red herring — it is not game data.** It's an ordinary
+**Watcom C/C++ makefile** (build script) for `SHOWSET.EXE`, which happens to have
+a `.SET` extension. It contains plain text: a list of source files
+(`showset.obj`, `graphasm.obj`, `graphik.obj`, `newalloc.obj`), libraries
+(`mss.lib`, `vidlib.lib`), and compiler commands (`wcc386`, `tasm`). An
+interesting side effect: **it reveals the source file names of the
+`SHOWSET.EXE` tool** (a marble-set viewer) — useful if this executable is ever
+analyzed.
+
+---
+
+*This document will be updated after every further finding about the format.*
