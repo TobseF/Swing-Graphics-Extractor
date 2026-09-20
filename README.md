@@ -374,13 +374,44 @@ constants, a possible palette) — still to be investigated.
 
 ---
 
-## 7. Conversion tool
+## 7. Conversion tools
 
-A standalone HTML/JS application (`RES_to_PNG_Converter.html`) was built,
-implementing both confirmed codecs (§4.1, §4.2), automatically selected based on
-the `type` field. It runs entirely locally in the browser (no files are uploaded
-to a server), supports multi-frame containers, single PNG export, and bulk ZIP
-export of all frames.
+Two independent implementations of the decoder exist, both built from the same
+format knowledge described above:
+
+### 7.1 Browser tool (`CONVERTER.html`)
+
+A standalone HTML/JS application implementing both confirmed codecs (§4.1,
+§4.2), automatically selected based on the `type` field. It runs entirely
+locally in the browser (no files are uploaded to a server), supports
+multi-frame containers, single PNG export, and bulk ZIP export of all frames.
+It also recognizes the `.SWG` raw-bitmap format (§9), the archive/package
+format (§10), and the `.SET` marble-skin format (§11).
+
+### 7.2 Command-line tool (`res_to_png.py`)
+
+A dependency-free Python 3 CLI port of the exact same decoding logic (paired
+RLE, simple stream, per-frame escape-token trial+validation, multi-frame
+containers, `.SWG`, archive, and `.SET` handling). PNG files are written by
+hand via `zlib` — no Pillow or other third-party library is required.
+
+Usage:
+```
+python res_to_png.py <path-to-file> [-o OUTPUT_DIR]
+```
+
+- The first (and only required) argument is the path to the `.RES`, `.SWG`, or
+  `.SET` file to convert.
+- `-o` / `--output` optionally overrides the output directory. By default,
+  frames are written next to the input file, into a new `<basename>_frames`
+  folder.
+- Every decoded frame is saved as its own PNG, named `<basename>_frameNNN.png`
+  (or `<entryname>_frameNNN.png` for frames extracted from an archive
+  sub-file, see §10). `.SWG` files produce a single `<basename>_frame000.png`.
+- The tool prints the same kind of summary the browser tool shows in its
+  status line (frame count, bytes consumed/leftover, archive/set contents),
+  and exits with a non-zero status if the file's format could not be
+  recognized.
 
 ---
 
