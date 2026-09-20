@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<title>SWING/RES → PNG</title>
+<style>
+  :root{
+    --bg:#14181c;
+    --panel:#1d2329;
+    --border:#2c343b;
+    --text:#e4e7ea;
+    --dim:#8b96a1;
+    --accent:#5cc8a8;
+    --accent-dim:#2f6f5c;
+    --err:#e07a5f;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font:14px/1.5 -apple-system,Segoe UI,Roboto,sans-serif;
+    padding:32px 20px 80px;
+  }
+  h1{
+    font-size:19px;
+    font-weight:600;
+    margin:0 0 4px;
+    letter-spacing:.2px;
+  }
+  .sub{
+    color:var(--dim);
+    font-size:13px;
+    margin:0 0 28px;
+  }
+  .wrap{max-width:880px;margin:0 auto;}
+
+  #drop{
+    border:1.5px dashed var(--border);
+    border-radius:10px;
+    padding:40px 20px;
+    text-align:center;
+    cursor:pointer;
+    transition:border-color .15s, background .15s;
+    background:var(--panel);
+  }
+  #drop.over{border-color:var(--accent);background:#1a2620;}
+  #drop p{margin:0;color:var(--dim);font-size:13.5px;}
+  #drop strong{color:var(--text);font-weight:600;}
+  input[type=file]{display:none;}
+
+  #fileInfo{
+    margin-top:16px;
+    font-size:12.5px;
+    color:var(--dim);
+    display:none;
+  }
+  #fileInfo code{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:4px;
+    padding:1px 6px;
+    color:var(--accent);
+  }
+
+  #controls{
+    margin-top:18px;
+    display:none;
+    gap:10px;
+    flex-wrap:wrap;
+    align-items:center;
+  }
+  select, button{
+    background:var(--panel);
+    color:var(--text);
+    border:1px solid var(--border);
+    border-radius:6px;
+    padding:7px 12px;
+    font-size:13px;
+    font-family:inherit;
+    cursor:pointer;
+  }
+  button.primary{
+    background:var(--accent-dim);
+    border-color:var(--accent);
+    color:#eafff6;
+  }
+  button:hover{border-color:var(--accent);}
+  button:disabled{opacity:.4;cursor:default;}
+
+  #status{
+    margin-top:14px;
+    font-size:12.5px;
+    color:var(--dim);
+    min-height:18px;
+  }
+  #status.err{color:var(--err);}
+
+  #grid{
+    margin-top:24px;
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(112px,1fr));
+    gap:10px;
+  }
+  .frame{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:8px;
+    padding:8px;
+    text-align:center;
+  }
+  .frame canvas{
+    width:100%;
+    image-rendering:pixelated;
+    background:
+      linear-gradient(45deg,#2a2f34 25%,transparent 25%) -6px 0/12px 12px,
+      linear-gradient(-45deg,#2a2f34 25%,transparent 25%) -6px 0/12px 12px,
+      linear-gradient(45deg,transparent 75%,#2a2f34 75%) 0 0/12px 12px,
+      linear-gradient(-45deg,transparent 75%,#2a2f34 75%) 0 0/12px 12px,
+      #22282e;
+    border-radius:4px;
+    display:block;
+  }
+  .frame .meta{
+    margin-top:6px;
+    font-size:10.5px;
+    color:var(--dim);
+  }
+  .frame a{
+    display:block;
+    margin-top:4px;
+    font-size:11px;
+    color:var(--accent);
+    text-decoration:none;
+  }
+  .frame a:hover{text-decoration:underline;}
+
+  footer{
+    max-width:880px;
+    margin:40px auto 0;
+    font-size:11.5px;
+    color:var(--dim);
+    border-top:1px solid var(--border);
+    padding-top:14px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>SWING / Marble Master — konwerter .RES → PNG</h1>
+  <p class="sub">Eksperymentalny dekoder odtworzonego formatu grafiki gry z 1997 (Software 2000). Działa w 100% lokalnie w przeglądarce — żaden plik nigdzie nie jest wysyłany.</p>
+
+  <div id="drop">
+    <p><strong>Przeciągnij plik .RES, .SWG lub .SET tutaj</strong><br>albo kliknij, aby wybrać z dysku</p>
+    <input type="file" id="fileInput" accept=".res,.RES,.swg,.SWG,.3lb,.3LB,.6sp,.6SP,.set,.SET">
+  </div>
+
+  <div id="fileInfo"></div>
+
+  <div id="controls">
+    <button id="downloadAllBtn" class="primary">Pobierz wszystkie klatki (ZIP)</button>
+    <span id="frameCount" style="color:var(--dim);font-size:12.5px;"></span>
+  </div>
+
+  <div id="status"></div>
+  <div id="grid"></div>
+</div>
+
+<footer>
+  <b>.RES</b> — nagłówek 16B (magic, type, w, h, dataLen, extra) + 4B paddingu. Kodek wybierany jest na podstawie pola
+  <code>type</code>: <b>1, 4 lub 6</b> — RLE parami (escape + licznik pikseli do pominięcia); <b>2</b> — prosty strumień
+  1 token = 1 piksel; <b>7</b> — obserwowany w obu wariantach, więc próbowany jest najpierw kodek parami (z walidacją),
+  a w razie niepowodzenia prosty strumień; inne wartości (np. 3) domyślnie jako strumień prosty. Token ucieczki to
+  <code>0x0003</code> lub (rzadziej) <code>0x0000</code> — próbowane per klatka z walidacją, nigdy oba naraz (część
+  obrazów zawiera legalne czarne piksele o wartości słowa 0, które inaczej zostałyby błędnie potraktowane jako ucieczka).
+  <b>.SWG</b> — surowa, nieskompresowana bitmapa pełnoekranowa 640×480 bez nagłówka (ekrany menu/tła). Kolory w obu
+  formatach to RGB555. Obsługiwane są kontenery <code>.RES</code> z wieloma sklejonymi klatkami.
+  <b>Archiwa</b> (np. EXTRAS.RES, HELPMODE.RES) — pliki, których nagłówek nie pasuje do pojedynczego obrazu, są
+  automatycznie sprawdzane pod kątem formatu paczki: <code>u32</code> liczba wpisów + tabela rekordów (12-bajtowa
+  nazwa + rozmiar + offset) + sklejone dane. Każdy nazwany wpis (najczęściej <code>.3LB</code>/<code>.6SP</code>)
+  jest dekodowany jak zwykły plik <code>.RES</code>; wpisy innego typu (np. <code>.DAT</code>) są wykrywane, ale
+  pomijane, bo nie są obrazami.
+  <b>.SET</b> — zestaw skórek kulek (np. NORMAL.SET): 48-bajtowy nagłówek z sygnaturą tekstową "Gib mir 'ne
+  Kugel" i nazwą zestawu, po którym następuje zwykły blok obrazów <code>.RES</code> (same kulki, jedna klatka na
+  kolor/wzór).
+</footer>
+
+<script>
+const dropEl = document.getElementById('drop');
+const fileInput = document.getElementById('fileInput');
+const fileInfo = document.getElementById('fileInfo');
+const statusEl = document.getElementById('status');
+const gridEl = document.getElementById('grid');
+const controlsEl = document.getElementById('controls');
+const downloadAllBtn = document.getElementById('downloadAllBtn');
+const frameCountEl = document.getElementById('frameCount');
+
+let decodedFrames = []; // {canvas, w, h, index}
+
+dropEl.addEventListener('click', () => fileInput.click());
+dropEl.addEventListener('dragover', e => { e.preventDefault(); dropEl.classList.add('over'); });
+dropEl.addEventListener('dragleave', () => dropEl.classList.remove('over'));
+dropEl.addEventListener('drop', e => {
+  e.preventDefault();
+  dropEl.classList.remove('over');
+  if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', e => {
+  if (e.target.files.length) handleFile(e.target.files[0]);
+});
+
+function rgb555to888(v){
+  const r = (v >> 10) & 0x1F;
+  const g = (v >> 5) & 0x1F;
+  const b = v & 0x1F;
+  return [Math.round(r*255/31), Math.round(g*255/31), Math.round(b*255/31)];
+}
+
+// Parses one image record starting at byteOffset.
+// Two known codecs. The header's "type" byte is the primary signal, but
+// type=7 has been observed using EITHER codec, so it gets a validated
+// trial of the paired codec before falling back:
+//   type 1, 4, or 6 -> paired RLE (dataLen from the header is trusted directly).
+//   type 2      -> simple stream.
+//   type 7      -> try paired RLE first (validated), else simple stream.
+//   any other type (e.g. 3) -> simple stream (fallback).
+// ESCAPE TOKEN: most files use 0x0003, but some (e.g. COLOR.RES) use
+// 0x0000 instead. Critically, the two must NEVER both be treated as
+// escape at once - some images (e.g. KRANNORM.RES, BLOCK.RES) contain
+// literal RGB555-black pixels (word value 0) as real image data, and
+// blindly treating 0 as an escape corrupts exactly those pixels. So each
+// frame is decoded with a single candidate escape value at a time,
+// trying 0x0003 first and validating the result; only if that fails do
+// we retry the same frame with 0x0000.
+function decodePairedRLE(view, bytes, byteOffset, w, h, dataLen, escapeToken, strictValidate){
+  const dataStart = byteOffset + 16 + 4;
+  if (dataStart + dataLen*2 > bytes.length) return null;
+  const words = new Uint16Array(dataLen);
+  for (let i=0;i<dataLen;i++){ words[i] = view.getUint16(dataStart + i*2, true); }
+
+  const canvas = document.createElement('canvas');
+  canvas.width = w; canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  const imgData = ctx.createImageData(w, h);
+  const px = imgData.data;
+
+  const totalPx = w*h;
+  let idx = 0;
+  let rowsCompleted = 0;
+  let implausible = false; // a single skip run can never exceed the whole image
+  for (let row=0; row<h; row++){
+    let col = 0;
+    while (col < w && idx < dataLen){
+      const token = words[idx++];
+      if (token === escapeToken){
+        if (idx >= dataLen) break;
+        const cnt = words[idx++];
+        if (cnt > totalPx) implausible = true;
+        col += cnt;
+      } else {
+        const [r,g,b] = rgb555to888(token);
+        if (col < w){
+          const p = (row*w + col) * 4;
+          px[p]=r; px[p+1]=g; px[p+2]=b; px[p+3]=255;
+        }
+        col++;
+      }
+    }
+    if (col >= w) rowsCompleted++;
+  }
+
+  // Valid if the whole word budget was used, every row filled exactly to
+  // width (except possibly the very last row - trailing transparency can
+  // be implicit, simply omitted rather than encoded), AND no skip run
+  // claimed to cover more pixels than the entire image (a sure sign the
+  // wrong escape token was tried - this can otherwise slip past the
+  // row-completeness check by coincidence on very small images).
+  const valid = (idx === dataLen && rowsCompleted >= h - 1 && !implausible);
+  if (strictValidate && !valid) return null;
+
+  ctx.putImageData(imgData, 0, 0);
+  return {canvas, nextOffset: dataStart + dataLen*2, valid};
+}
+
+function decodeSimpleStream(view, bytes, byteOffset, w, h, escapeToken){
+  const canvas = document.createElement('canvas');
+  canvas.width = w; canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  const imgData = ctx.createImageData(w, h);
+  const px = imgData.data;
+
+  let pos = byteOffset + 16 + 4;
+  const totalPx = w*h;
+  let filled = 0;
+  while (filled < totalPx && pos < bytes.length - 1){
+    const token = view.getUint16(pos, true); pos += 2;
+    if (token === escapeToken){
+      filled++;
+    } else {
+      const row = Math.floor(filled / w);
+      const col = filled % w;
+      if (row < h){
+        const [r,g,b] = rgb555to888(token);
+        const p = (row*w + col) * 4;
+        px[p]=r; px[p+1]=g; px[p+2]=b; px[p+3]=255;
+      }
+      filled++;
+    }
+  }
+  if (filled < totalPx) return null; // wrong escape token or ran out of data
+
+  ctx.putImageData(imgData, 0, 0);
+  return {canvas, nextOffset: pos};
+}
+
+// Tries escape=0x0003 first (validated), falls back to escape=0x0000.
+function tryPairedWithEscapeFallback(view, bytes, byteOffset, w, h, dataLen, strictValidate){
+  for (const esc of [3, 0]){
+    const res = decodePairedRLE(view, bytes, byteOffset, w, h, dataLen, esc, true);
+    if (res) return res;
+  }
+  if (!strictValidate){
+    // Last resort: trust dataLen unconditionally with escape=3, even if
+    // row-completeness didn't validate (should rarely be needed).
+    return decodePairedRLE(view, bytes, byteOffset, w, h, dataLen, 3, false);
+  }
+  return null;
+}
+
+function trySimpleWithEscapeFallback(view, bytes, byteOffset, w, h){
+  for (const esc of [3, 0]){
+    const res = decodeSimpleStream(view, bytes, byteOffset, w, h, esc);
+    if (res) return res;
+  }
+  return null;
+}
+
+function decodeFrame(view, bytes, byteOffset){
+  if (byteOffset + 16 > bytes.length) return null;
+  const magic   = view.getUint16(byteOffset, true);
+  const type    = view.getUint8(byteOffset + 2);
+  const const0f = view.getUint8(byteOffset + 3);
+  const w       = view.getUint16(byteOffset + 4, true);
+  const h       = view.getUint16(byteOffset + 6, true);
+  const dataLen = view.getUint32(byteOffset + 8, true);
+  const extra   = view.getUint32(byteOffset + 12, true);
+
+  if (magic !== 0x14 || const0f !== 0x0F) return null;
+  if (w === 0 || h === 0 || w > 4096 || h > 4096) return null;
+
+  let result = null;
+  if (type === 1 || type === 4 || type === 6){
+    result = tryPairedWithEscapeFallback(view, bytes, byteOffset, w, h, dataLen, false);
+  } else if (type === 7){
+    result = tryPairedWithEscapeFallback(view, bytes, byteOffset, w, h, dataLen, true);
+    if (!result) result = trySimpleWithEscapeFallback(view, bytes, byteOffset, w, h);
+  } else {
+    // type 2, type 3, and any other/unknown type.
+    result = trySimpleWithEscapeFallback(view, bytes, byteOffset, w, h);
+  }
+  if (!result) return null;
+
+  return {canvas: result.canvas, w, h, header:{type,dataLen,extra}, nextOffset: result.nextOffset};
+}
+
+// Decodes a .SWG file: a raw, headerless, uncompressed full-screen
+// bitmap. Every sample seen so far is exactly 640x480 RGB555 (614400
+// bytes) - the resolution the game's full-screen art (menus, gamma
+// calibration screen, etc.) was authored at. No escape tokens, no RLE:
+// every word is a literal pixel, read left-to-right, top-to-bottom.
+function decodeSWG(bytes, view){
+  const w = 640, h = 480;
+  if (bytes.length !== w*h*2) return null; // not the expected raw size
+  const canvas = document.createElement('canvas');
+  canvas.width = w; canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  const imgData = ctx.createImageData(w, h);
+  const px = imgData.data;
+  let pos = 0;
+  for (let i=0; i<w*h; i++){
+    const token = view.getUint16(pos, true); pos += 2;
+    const [r,g,b] = rgb555to888(token);
+    const p = i*4;
+    px[p]=r; px[p+1]=g; px[p+2]=b; px[p+3]=255;
+  }
+  ctx.putImageData(imgData, 0, 0);
+  return {canvas, w, h};
+}
+
+// Detects and parses the "package" container format used by files like
+// EXTRAS.RES and HELPMODE.RES: these are NOT single sprites but archives
+// bundling multiple named sub-resources (commonly with extensions like
+// .3LB or .6SP, which are themselves ordinary multi-frame .RES images).
+// Layout: u32 entry count, then that many 20-byte records (12-byte
+// null-padded ASCII name + u32 size + u32 offset - offset is absolute
+// from the start of the file), followed immediately by the concatenated
+// raw bytes of every entry, back to back, in table order.
+// Detects the marble-skin "set" format used by files like NORMAL.SET:
+// a fixed 48-byte header, then an ordinary multi-frame .RES image block
+// (the marbles themselves), optionally followed by trailing bytes of a
+// still-unidentified structure (ignored here - it isn't image data).
+// Header layout (48 bytes):
+//   0x00  19 B   ASCII signature "Gib mir 'ne Kugel\n" + trailing NUL
+//   0x14  12 B   set name, NUL-padded ASCII (e.g. "standard")
+//   0x20   4 B   unknown (seen as 0)
+//   0x24   4 B   unknown (seen as a non-zero value - possibly a checksum)
+//   0x28   4 B   unknown (seen as 0)
+//   0x2C   4 B   size in bytes of the image block that follows
+// The image block's own length is redundant with this decoder: the
+// existing frame-by-frame loop already stops cleanly where the last
+// valid header ends, so the size field is read only to report the set
+// name to the user, not to bound the decode loop.
+const SET_SIGNATURE = "Gib mir 'ne Kugel\n";
+function parseSetHeader(bytes){
+  if (bytes.length < 48) return null;
+  const sig = new TextDecoder('ascii').decode(bytes.slice(0, SET_SIGNATURE.length));
+  if (sig !== SET_SIGNATURE) return null;
+  const nameBytes = bytes.slice(20, 32);
+  const nul = nameBytes.indexOf(0);
+  const name = new TextDecoder('ascii').decode(nul >= 0 ? nameBytes.slice(0, nul) : nameBytes);
+  return {name, dataStart: 48};
+}
+
+function parseArchive(view, bytes){
+  if (bytes.length < 4) return null;
+  const count = view.getUint32(0, true);
+  if (count === 0 || count > 5000) return null;
+  const headerEnd = 4 + count*20;
+  if (headerEnd > bytes.length) return null;
+
+  const entries = [];
+  let pos = 4;
+  for (let i=0; i<count; i++){
+    const nameBytes = bytes.slice(pos, pos+12);
+    const nul = nameBytes.indexOf(0);
+    const name = new TextDecoder('ascii').decode(nul >= 0 ? nameBytes.slice(0, nul) : nameBytes);
+    const size = view.getUint32(pos+12, true);
+    const offset = view.getUint32(pos+16, true);
+    if (!/^[\x20-\x7e]+$/.test(name)) return null; // not printable ASCII - not this format
+    entries.push({name, size, offset});
+    pos += 20;
+  }
+
+  // Validate: offsets must be strictly sequential starting right after
+  // the header table, and the last entry must end exactly at file size.
+  let expected = headerEnd;
+  for (const e of entries){
+    if (e.offset !== expected) return null;
+    expected += e.size;
+  }
+  if (expected !== bytes.length) return null;
+
+  return entries;
+}
+
+async function handleFile(file){
+  gridEl.innerHTML = '';
+  decodedFrames = [];
+  controlsEl.style.display = 'none';
+  statusEl.className = '';
+  statusEl.textContent = 'Wczytywanie...';
+
+  const buf = await file.arrayBuffer();
+  const bytes = new Uint8Array(buf);
+  const view = new DataView(buf);
+
+  fileInfo.style.display = 'block';
+  fileInfo.innerHTML = `Plik: <code>${file.name}</code> — ${bytes.length.toLocaleString('pl-PL')} bajtów`;
+
+  const isSWG = /\.swg$/i.test(file.name);
+
+  if (isSWG){
+    const res = decodeSWG(bytes, view);
+    if (!res){
+      statusEl.className = 'err';
+      statusEl.textContent = `Plik .SWG ma nieoczekiwany rozmiar (${bytes.length} B). Znane pliki .SWG to surowe bitmapy 640×480 RGB555 (614400 B) bez nagłówka — ten plik może mieć inną rozdzielczość.`;
+      return;
+    }
+    decodedFrames = [{...res, index: 0}];
+    statusEl.textContent = `Zdekodowano surowy ekran 640×480 (.SWG, bez nagłówka i kompresji).`;
+    frameCountEl.textContent = `1 obraz (pełny ekran)`;
+    controlsEl.style.display = 'flex';
+    renderFrameGrid(file.name);
+    downloadAllBtn.onclick = () => downloadAllAsZip(file.name);
+    return;
+  }
+
+  const setHeader = parseSetHeader(bytes);
+  let offset = setHeader ? setHeader.dataStart : 0;
+  let count = 0;
+  const maxFrames = 4000;
+  while (offset < bytes.length - 16 && count < maxFrames){
+    const res = decodeFrame(view, bytes, offset);
+    if (!res) break;
+    decodedFrames.push({...res, index: count});
+    offset = res.nextOffset;
+    count++;
+  }
+
+  if (count > 0 && setHeader){
+    const leftover = bytes.length - offset;
+    statusEl.textContent = `Zestaw kulek "${setHeader.name}": ${count} kulek zdekodowanych.` +
+      (leftover > 16 ? ` (${leftover} B na końcu pliku to inna, jeszcze nierozpoznana struktura - pominięto.)` : '');
+    frameCountEl.textContent = `${count} kulek`;
+    controlsEl.style.display = 'flex';
+    renderFrameGrid(file.name);
+    downloadAllBtn.onclick = () => downloadAllAsZip(file.name);
+    return;
+  }
+
+  if (count === 0){
+    // Not a plain sprite file - see if it's an archive of named
+    // sub-resources instead (e.g. EXTRAS.RES, HELPMODE.RES).
+    const entries = parseArchive(view, bytes);
+    if (entries){
+      let globalIndex = 0;
+      let imageEntryCount = 0;
+      let otherEntryCount = 0;
+      for (const entry of entries){
+        let entryOffset = entry.offset;
+        const entryEnd = entry.offset + entry.size;
+        let entryFrameCount = 0;
+        while (entryOffset < entryEnd - 16){
+          const res = decodeFrame(view, bytes, entryOffset);
+          if (!res) break;
+          decodedFrames.push({...res, index: globalIndex, entryName: entry.name, entryFrame: entryFrameCount});
+          entryOffset = res.nextOffset;
+          globalIndex++;
+          entryFrameCount++;
+        }
+        if (entryFrameCount > 0) imageEntryCount++; else otherEntryCount++;
+      }
+      statusEl.textContent = `Archiwum: ${entries.length} plików w środku, ${imageEntryCount} to obrazy (łącznie ${decodedFrames.length} klatek)` +
+        (otherEntryCount > 0 ? `, ${otherEntryCount} to dane innego typu (nie obrazy, pominięte).` : '.');
+      frameCountEl.textContent = `${decodedFrames.length} klatek z ${imageEntryCount} plików`;
+      controlsEl.style.display = 'flex';
+      renderFrameGrid(file.name);
+      downloadAllBtn.onclick = () => downloadAllAsZip(file.name);
+      return;
+    }
+
+    statusEl.className = 'err';
+    statusEl.textContent = 'Nie udało się rozpoznać nagłówka (magic 0x14 / const 0x0F) ani formatu archiwum. Ten plik może być innego typu, którego jeszcze nie obsługujemy.';
+    return;
+  }
+
+  const leftover = bytes.length - offset;
+  statusEl.className = leftover > 16 ? 'err' : '';
+  statusEl.textContent = `Zdekodowano ${count} klatek. ` +
+    (leftover > 16
+      ? `Uwaga: zostało ${leftover} nierozpoznanych bajtów na końcu pliku.`
+      : `Cały plik zużyty (pozostało ${leftover} bajtów paddingu/końca).`);
+
+  frameCountEl.textContent = `${count} klatek`;
+  controlsEl.style.display = 'flex';
+  renderFrameGrid(file.name);
+  downloadAllBtn.onclick = () => downloadAllAsZip(file.name);
+}
+
+function renderFrameGrid(fileName){
+  decodedFrames.forEach(f => {
+    const div = document.createElement('div');
+    div.className = 'frame';
+    f.canvas.style.aspectRatio = `${f.w}/${f.h}`;
+    div.appendChild(f.canvas);
+    const meta = document.createElement('div');
+    meta.className = 'meta';
+    meta.textContent = f.entryName
+      ? `${f.entryName} #${f.entryFrame} · ${f.w}×${f.h}`
+      : `#${f.index} · ${f.w}×${f.h}`;
+    div.appendChild(meta);
+    const link = document.createElement('a');
+    link.textContent = 'Pobierz PNG';
+    link.href = '#';
+    link.addEventListener('click', e => {
+      e.preventDefault();
+      f.canvas.toBlob(blob => {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        const baseName = f.entryName
+          ? f.entryName.replace(/\.[^.]+$/,'')
+          : fileName.replace(/\.[^.]+$/,'');
+        const frameNum = f.entryName ? f.entryFrame : f.index;
+        a.download = `${baseName}_frame${String(frameNum).padStart(3,'0')}.png`;
+        a.click();
+      });
+    });
+    div.appendChild(link);
+    gridEl.appendChild(div);
+  });
+}
+
+// Minimal ZIP writer (store, no compression) so we don't need external libraries.
+function crc32(bytes){
+  let c, crcTable = crc32.table || (crc32.table = (() => {
+    const t = [];
+    for (let n=0;n<256;n++){
+      c = n;
+      for (let k=0;k<8;k++) c = (c&1) ? (0xEDB88320 ^ (c>>>1)) : (c>>>1);
+      t[n]=c;
+    }
+    return t;
+  })());
+  let crc = 0 ^ (-1);
+  for (let i=0;i<bytes.length;i++) crc = (crc>>>8) ^ crcTable[(crc ^ bytes[i]) & 0xFF];
+  return (crc ^ (-1)) >>> 0;
+}
+
+async function downloadAllAsZip(baseName){
+  statusEl.textContent = 'Pakowanie ZIP...';
+  const name = baseName.replace(/\.[^.]+$/,'');
+  const files = [];
+  for (const f of decodedFrames){
+    const blob = await new Promise(res => f.canvas.toBlob(res));
+    const buf = new Uint8Array(await blob.arrayBuffer());
+    const fileBaseName = f.entryName ? f.entryName.replace(/\.[^.]+$/,'') : name;
+    const frameNum = f.entryName ? f.entryFrame : f.index;
+    files.push({name:`${fileBaseName}_frame${String(frameNum).padStart(3,'0')}.png`, data:buf});
+  }
+
+  const localParts = [];
+  const centralParts = [];
+  let offset = 0;
+  const encoder = new TextEncoder();
+
+  for (const file of files){
+    const nameBytes = encoder.encode(file.name);
+    const crc = crc32(file.data);
+    const size = file.data.length;
+
+    const local = new Uint8Array(30 + nameBytes.length);
+    const dv = new DataView(local.buffer);
+    dv.setUint32(0, 0x04034b50, true);
+    dv.setUint16(4, 20, true);
+    dv.setUint16(6, 0, true);
+    dv.setUint16(8, 0, true);
+    dv.setUint16(10, 0, true);
+    dv.setUint16(12, 0, true);
+    dv.setUint32(14, crc, true);
+    dv.setUint32(18, size, true);
+    dv.setUint32(22, size, true);
+    dv.setUint16(26, nameBytes.length, true);
+    dv.setUint16(28, 0, true);
+    local.set(nameBytes, 30);
+
+    localParts.push(local, file.data);
+
+    const central = new Uint8Array(46 + nameBytes.length);
+    const cdv = new DataView(central.buffer);
+    cdv.setUint32(0, 0x02014b50, true);
+    cdv.setUint16(4, 20, true);
+    cdv.setUint16(6, 20, true);
+    cdv.setUint16(8, 0, true);
+    cdv.setUint16(10, 0, true);
+    cdv.setUint16(12, 0, true);
+    cdv.setUint16(14, 0, true);
+    cdv.setUint32(16, crc, true);
+    cdv.setUint32(20, size, true);
+    cdv.setUint32(24, size, true);
+    cdv.setUint16(28, nameBytes.length, true);
+    cdv.setUint16(30, 0, true);
+    cdv.setUint16(32, 0, true);
+    cdv.setUint16(34, 0, true);
+    cdv.setUint16(36, 0, true);
+    cdv.setUint32(38, 0, true);
+    cdv.setUint32(42, offset, true);
+    central.set(nameBytes, 46);
+    centralParts.push(central);
+
+    offset += local.length + file.data.length;
+  }
+
+  const centralStart = offset;
+  let centralSize = 0;
+  centralParts.forEach(c => centralSize += c.length);
+
+  const end = new Uint8Array(22);
+  const edv = new DataView(end.buffer);
+  edv.setUint32(0, 0x06054b50, true);
+  edv.setUint16(4, 0, true);
+  edv.setUint16(6, 0, true);
+  edv.setUint16(8, files.length, true);
+  edv.setUint16(10, files.length, true);
+  edv.setUint32(12, centralSize, true);
+  edv.setUint32(16, centralStart, true);
+  edv.setUint16(20, 0, true);
+
+  const blob = new Blob([...localParts, ...centralParts, end], {type:'application/zip'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `${name}_frames.zip`;
+  a.click();
+  statusEl.textContent = `Zdekodowano ${decodedFrames.length} klatek. ZIP pobrany.`;
+}
+</script>
+</body>
+</html>
